@@ -13,8 +13,8 @@ from numpy import nan
 from numpy.linalg import norm as norm
 
 import hw1_conf as conf
-from plot_utils import create_empty_figure
 from tsid_biped import TsidBiped
+from plot_utils import create_empty_figure
 
 print("".center(conf.LINE_WIDTH, '#'))
 print(" Test Walking ".center(conf.LINE_WIDTH, '#'))
@@ -85,7 +85,7 @@ for i in range(-N_pre, N + N_post):
     if i == 0:
         print("Starting to walk (remove contact left foot)")
         tsid_bip.remove_contact_LF()
-    elif i > 0 and i < N - 1:
+    elif 0 < i < N - 1:
         if contact_phase[i] != contact_phase[i - 1]:
             print("Time %.3f Changing contact phase from %s to %s" % (t, contact_phase[i - 1], contact_phase[i]))
             if contact_phase[i] == 'left':
@@ -109,11 +109,11 @@ for i in range(-N_pre, N + N_post):
     HQPData = tsid_bip.formulation.computeProblemData(t, q, v)
 
     sol = tsid_bip.solver.solve(HQPData)
-    if (sol.status != 0):
+    if sol.status != 0:
         print("QP problem could not be solved! Error code:", sol.status)
         break
     if norm(v, 2) > 40.0:
-        print("Time %.3f Velocities are too high, stop everything!" % (t), norm(v))
+        print("Time %.3f Velocities are too high, stop everything!" % t, norm(v))
         break
 
     if i > 0:
@@ -137,18 +137,18 @@ for i in range(-N_pre, N + N_post):
         if tsid_bip.formulation.checkContact(tsid_bip.contactRF.name, sol):
             T_RF = tsid_bip.contactRF.getForceGeneratorMatrix
             f_RF[:, i] = T_RF @ tsid_bip.formulation.getContactForce(tsid_bip.contactRF.name, sol)
-            if (f_RF[2, i] > 1e-3):
+            if f_RF[2, i] > 1e-3:
                 cop_RF[0, i] = f_RF[4, i] / f_RF[2, i]
                 cop_RF[1, i] = -f_RF[3, i] / f_RF[2, i]
         if tsid_bip.formulation.checkContact(tsid_bip.contactLF.name, sol):
             T_LF = tsid_bip.contactRF.getForceGeneratorMatrix
             f_LF[:, i] = T_LF @ tsid_bip.formulation.getContactForce(tsid_bip.contactLF.name, sol)
-            if (f_LF[2, i] > 1e-3):
+            if f_LF[2, i] > 1e-3:
                 cop_LF[0, i] = f_LF[4, i] / f_LF[2, i]
                 cop_LF[1, i] = -f_LF[3, i] / f_LF[2, i]
 
     if i % conf.PRINT_N == 0:
-        print("Time %.3f" % (t))
+        print("Time %.3f" % t)
         if tsid_bip.formulation.checkContact(tsid_bip.contactRF.name, sol) and i >= 0:
             print("\tnormal force %s: %.1f" % (tsid_bip.contactRF.name.ljust(20, '.'), f_RF[2, i]))
 
@@ -156,7 +156,7 @@ for i in range(-N_pre, N + N_post):
             print("\tnormal force %s: %.1f" % (tsid_bip.contactLF.name.ljust(20, '.'), f_LF[2, i]))
 
         print("\ttracking err %s: %.3f" % (
-        tsid_bip.comTask.name.ljust(20, '.'), norm(tsid_bip.comTask.position_error, 2)))
+            tsid_bip.comTask.name.ljust(20, '.'), norm(tsid_bip.comTask.position_error, 2)))
         print("\t||v||: %.3f\t ||dv||: %.3f" % (norm(v, 2), norm(dv)))
 
     q, v = tsid_bip.integrate_dv(q, v, dv, conf.dt)
@@ -178,10 +178,12 @@ for i in range(-N_pre, N + N_post):
         b = np.concatenate((np.array(conf.push_robot_com_vel), np.zeros(J.shape[0])))
         v += np.linalg.lstsq(A, b, rcond=-1)[0]
 
-    if i % conf.DISPLAY_N == 0: tsid_bip.display(q)
+    if i % conf.DISPLAY_N == 0:
+        tsid_bip.display(q)
 
     time_spent = time.time() - time_start
-    if (time_spent < conf.dt): time.sleep(conf.dt - time_spent)
+    if time_spent < conf.dt:
+        time.sleep(conf.dt - time_spent)
 
 # PLOT STUFF
 time = np.arange(0.0, (N + N_post) * conf.dt, conf.dt)

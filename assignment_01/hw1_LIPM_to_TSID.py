@@ -14,8 +14,18 @@ import hw1_conf as conf
 from plot_utils import plot_xy
 
 
-# ------- Implement the 3rd order interpolating function here below -------
 def compute_3rd_order_poly_traj(x0, x1, T, dt):
+    """
+    @param x0: initial point. It can be 2-dimensional (x,y) or 1-dimensional (z)
+    @param x1: final point. It can be 2-dimensional (x,y) or 1-dimensional (z)
+    @param T: time step of LIPM trajectory (time the robot takes to take one full step)
+    @param dt: time step of TSID trajectory
+    @return: a cubic polynomial trajectory (vector of positions, velocities, accelerations).
+    If x0 and x1 are 2-dimensional, each element of the vector is 2-dimensional.
+    If they are 1-dimensional, each element is 1-dimensional.
+    The length of the vector is N, where N=T/dt, meaning the number of TSID time steps in one LIPM time step.
+    """
+
     n_time_steps = int(T / dt)
 
     if x0.shape[0] == 2:  # Computing for x,y
@@ -44,7 +54,7 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
             ddx[0, i] = 2 * c + 6 * d * t
             ddx[1, i] = 0.
 
-        print(x[0, n_time_steps-1])
+        print(x[0, n_time_steps - 1])
         exit(0)
 
         return x, dx, ddx
@@ -162,7 +172,7 @@ def interpolate_lipm_traj(T_step, nb_steps, dt_mpc, dt_ctrl, com_z, g, com_state
         com[1, i * N_inner] = com_state_y[i, 0]
         dcom[0, i * N_inner] = com_state_x[i, 1]
         dcom[1, i * N_inner] = com_state_y[i, 1]
-        if (i > 0):
+        if i > 0:
             if np.linalg.norm(cop_ref[i, :] - cop_ref[i - 1, :]) < 1e-10:
                 contact_phase[i * N_inner] = contact_phase[i * N_inner - 1]
             else:
@@ -185,7 +195,9 @@ def interpolate_lipm_traj(T_step, nb_steps, dt_mpc, dt_ctrl, com_z, g, com_state
             dcom[1, ii + 1] = y_next[1]
             ddcom[:2, ii] = g / com_z * (com[:2, ii] - cop[:, ii])
 
-            if (j > 0): contact_phase[ii] = contact_phase[ii - 1]
+            if j > 0:
+                contact_phase[ii] = contact_phase[ii - 1]
+
     return com, dcom, ddcom, cop, contact_phase, foot_steps
 
 
