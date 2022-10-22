@@ -1,3 +1,8 @@
+# Custom gitignore
+01_assignment/assignment_01.pdf
+reactive_control
+01_assignment/talos_walking_traj_tsid.npz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +132,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Pycharm
+.idea
