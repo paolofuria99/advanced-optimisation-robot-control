@@ -15,14 +15,19 @@ from pinocchio.robot_wrapper import RobotWrapper
 from example_robot_data.robots_loader import getModelPath, readParamsFromSrdf
 
 def loadURlab():
-    LOCOSIM_PATH = "/home/student/ros_ws/src/locosim"
-#    URDF = LOCOSIM_PATH+"/robot_urdf/ur5.urdf"
-    URDF = LOCOSIM_PATH+"/ur_description/urdf/ur5.urdf"
-    modelPath = '/opt/openrobots/share/'
-    robot = RobotWrapper.BuildFromURDF(URDF, [modelPath])
+    URDF_FILENAME = "ur5_lab.urdf"
+    URDF_SUBPATH = "/ur_description/urdf/" + URDF_FILENAME
+    modelPath = getModelPath(URDF_SUBPATH)
+    urdf_full_path = modelPath + URDF_SUBPATH
+    try:
+        robot = RobotWrapper.BuildFromURDF(urdf_full_path, [modelPath])
+    except:
+        print(f"File {urdf_full_path} not found")
+        exit(1)
     robot.model.addBodyFrame("gripper", 6, pin.SE3(np.eye(3), np.array([0.0, 0.0, 0.18])), 28)
-    
     return robot
+
+    return modelPath+URDF_SUBPATH, modelPath
 
 def loadUR(robotNum=5, limited=False, gripper=False, URDF_FILENAME='', path=''):
     assert (not (gripper and (robot == 10 or limited)))
