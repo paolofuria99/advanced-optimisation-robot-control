@@ -39,7 +39,7 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
         a_matrix = np.array([[1, 0, 0, 0],
                              [1, T, T ** 2, T ** 3],
                              [0, 1, 2 * T, 3 * (T ** 2)],
-                             [0, 0, 2, 6 * T]])
+                             [0, 1, 0,  0]])
 
         b_matrix = np.array([x0, x1, 0, 0])
 
@@ -65,8 +65,12 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
 
         a_matrix = np.array([[1, 0, 0, 0],
                              [1, T, T ** 2, T ** 3],
-                             [0, 1, 2 * T, 3 * (T ** 2)],
-                             [0, 0, 2, 6 * T]])
+                             [0,1,0,0],
+                             #[0,1,2*T,3*(T**2)],
+                             #[0,0,2,0]
+                             [0, 1, 2*T, 3*(T**2)]
+                             #[0, 0, 2, 6*T]
+                            ])
 
         b_matrix = np.array([z0, z1, 0, 0])
 
