@@ -54,9 +54,6 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
             ddx[0, i] = 2 * c + 6 * d * t
             ddx[1, i] = 0.
 
-        print(x[0, n_time_steps - 1])
-        exit(0)
-
         return x, dx, ddx
     else:  # Computing for z
         z0 = x0[0]
