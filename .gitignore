@@ -1,8 +1,8 @@
 # Custom gitignore
 reactive_control
-assignment_01/talos_walking_traj_tsid.npz
 lab_disi
 optimal_control
+utils
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
