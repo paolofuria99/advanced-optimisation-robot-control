@@ -28,7 +28,7 @@ urdf = "/talos_data/robots/talos_reduced.urdf"
 modelPath = getModelPath(urdf)
 urdf = modelPath + urdf
 srdf = modelPath + '/talos_data/srdf/talos.srdf'
-path = os.path.join(modelPath, '../..')
+path = os.path.join(modelPath, '../../..')
 
 nv = 38
 foot_scaling = 1.
