@@ -7,26 +7,35 @@ Created on Mon Oct 18 10:31:22 2022
 
 import math
 
+import hw1_conf as conf
 import matplotlib.pyplot as plt
 import numpy as np
-
-import hw1_conf as conf
 from plot_utils import plot_xy
 
 
 def compute_3rd_order_poly_traj(x0, x1, T, dt):
     """
+    Interpolates two points of the LIPM trajectory.
+
+    For the x and z trajectory, it computes a 3rd order polynomial given the 4 following constraints:
+    * it has to pass through the initial and final point;
+    * it has to have zero velocity both at initial and final time.
+    The velocity constraints are there in order to have smoother trajectories, especially for the z
+    component.
+
+    For the y trajectory, it is kept costant (since the robot only moves forward).
+
     @param x0: initial point. It can be 2-dimensional (x,y) or 1-dimensional (z)
     @param x1: final point. It can be 2-dimensional (x,y) or 1-dimensional (z)
     @param T: time step of LIPM trajectory (time the robot takes to take one full step)
     @param dt: time step of TSID trajectory
-    @return: a cubic polynomial trajectory (vector of positions, velocities, accelerations).
+    @return: a trajectory (vector of positions, velocities, accelerations).
     If x0 and x1 are 2-dimensional, each element of the vector is 2-dimensional.
     If they are 1-dimensional, each element is 1-dimensional.
     The length of the vector is N, where N=T/dt, meaning the number of TSID time steps in one LIPM time step.
     """
 
-    n_time_steps = int(T / dt)
+    n_time_steps = int(T / dt)  # Number of TSID time steps
 
     if x0.shape[0] == 2:  # Computing for x,y
         x0, y0 = x0[:]
@@ -36,10 +45,11 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
         dx = np.zeros((2, n_time_steps))
         ddx = np.zeros((2, n_time_steps))
 
+        # Prepare the system of 4 equations to solve
         a_matrix = np.array([[1, 0, 0, 0],
-                             [1, T, T ** 2, T ** 3],
-                             [0, 1, 2 * T, 3 * (T ** 2)],
-                             [0, 1, 0,  0]])
+                             [1, T, T**2, T**3],
+                             [0, 1, 2 * T, 3 * (T**2)],
+                             [0, 1, 0, 0]])
 
         b_matrix = np.array([x0, x1, 0, 0])
 
@@ -47,12 +57,12 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
 
         for i in range(n_time_steps):
             t = i * dt
-            x[0, i] = a + b * t + c * (t ** 2) + d * (t ** 3)
-            x[1, i] = y0
-            dx[0, i] = b + 2 * c * t + 3 * d * (t ** 2)
-            dx[1, i] = 0.
-            ddx[0, i] = 2 * c + 6 * d * t
-            ddx[1, i] = 0.
+            x[0, i] = a + b * t + c * (t**2) + d * (t**3)  # x
+            x[1, i] = y0  # y
+            dx[0, i] = b + 2 * c * t + 3 * d * (t**2)  # dx
+            dx[1, i] = 0.  # dy
+            ddx[0, i] = 2 * c + 6 * d * t  # ddx
+            ddx[1, i] = 0.  # ddy
 
         return x, dx, ddx
     else:  # Computing for z
@@ -63,14 +73,11 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
         dx = np.zeros((1, n_time_steps))
         ddx = np.zeros((1, n_time_steps))
 
+        # Prepare the system of 4 equations to solve
         a_matrix = np.array([[1, 0, 0, 0],
-                             [1, T, T ** 2, T ** 3],
-                             [0,1,0,0],
-                             #[0,1,2*T,3*(T**2)],
-                             #[0,0,2,0]
-                             [0, 1, 2*T, 3*(T**2)]
-                             #[0, 0, 2, 6*T]
-                            ])
+                             [1, T, T**2, T**3],
+                             [0, 1, 2 * T, 3 * (T**2)],
+                             [0, 1, 0, 0]])
 
         b_matrix = np.array([z0, z1, 0, 0])
 
@@ -78,9 +85,9 @@ def compute_3rd_order_poly_traj(x0, x1, T, dt):
 
         for i in range(n_time_steps):
             t = i * dt
-            x[0, i] = a + b * t + c * (t ** 2) + d * (t ** 3)
-            dx[0, i] = b + 2 * c * t + 3 * d * (t ** 2)
-            ddx[0, i] = 2 * c + 6 * d * t
+            x[0, i] = a + b * t + c * (t**2) + d * (t**3) # z
+            dx[0, i] = b + 2 * c * t + 3 * d * (t**2)  # dz
+            ddx[0, i] = 2 * c + 6 * d * t  # ddz
 
         return x, dx, ddx
 
