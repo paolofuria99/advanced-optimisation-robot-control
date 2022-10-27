@@ -19,7 +19,7 @@ DATA_FILE_TSID = 'talos_walking_traj_tsid.npz'
 
 PUSH = 0  # Flag to activate CoM push @ half walk
 push_robot_com_vel = [0.1, 0., 0.]  # CoM velocity push
-SQUAT = 1  # Flag to activate squat task
+SQUAT = 0  # Flag to activate squat task
 squat_height = 0.65  # desired CoM height while squatting
 
 # robot parameters
