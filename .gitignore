@@ -3,6 +3,7 @@ reactive_control
 lab_disi
 optimal_control
 utils
+RL
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
