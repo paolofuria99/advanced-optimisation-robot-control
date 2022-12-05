@@ -21,10 +21,10 @@ print(" Test Walking ".center(conf.LINE_WIDTH, '#'))
 print("".center(conf.LINE_WIDTH, '#'), '\n')
 
 PLOT_COM = 1
-PLOT_COP = 0
-PLOT_FOOT_TRAJ = 0
-PLOT_TORQUES = 0
-PLOT_JOINT_VEL = 0
+PLOT_COP = 1
+PLOT_FOOT_TRAJ = 1
+PLOT_TORQUES = 1
+PLOT_JOINT_VEL = 1
 
 data = np.load(conf.DATA_FILE_TSID)
 

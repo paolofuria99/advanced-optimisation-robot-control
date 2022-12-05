@@ -44,7 +44,9 @@ class DDPSolverLinearDyn(DDPSolver):
         cost = 0.5*np.dot(x, np.dot(self.H_xx[i,:,:], x)) \
                 + np.dot(self.h_x[i,:].T, x) + self.h_s[i] \
                 + 0.5*self.lmbda*np.dot(u.T, u) \
-                # + ... add here the running cost term for taking into account the underactuation
+                + 0.5 * self.underact * np.dot(np.dot(np.array([[0, 0], [0, 1]]), u).T, np.dot(np.array([[0, 0], [0, 1]]), u))
+                # where [[0,0],[0,1] is the selection matrix which force the torque associated
+                # to the second joint (which is not actuated) to be zero
         if self.CONTROL_BOUNDS:
             # ... implement here the running cost term for taking into the control limits
         return cost

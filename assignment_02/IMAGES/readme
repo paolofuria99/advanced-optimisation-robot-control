@@ -1,0 +1,3 @@
+S = Selection Matrix 	[0,1]
+A = Actuation Penalty	[0,1]
+P = Push		[0,1]
