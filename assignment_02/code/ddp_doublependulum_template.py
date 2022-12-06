@@ -45,12 +45,12 @@ class DDPSolverLinearDyn(DDPSolver):
         ''' Running cost at time step i for state x and control u '''
 
         # Nullify the control on the first, not-actuated joint for under-actuation
-        u_underact = np.array(0, u[1])
+        u_underact = np.array([0, u[1]])
 
         cost = 0.5 * np.dot(x, np.dot(self.H_xx[i, :, :], x)) \
-               + np.dot(self.h_x[i, :].T, x) + self.h_s[i] \
-               + 0.5 * self.lmbda * np.dot(u.T, u) \
-               + 0.5 * self.underact * np.dot(u_underact.T, u_underact)
+           + np.dot(self.h_x[i, :].T, x) + self.h_s[i] \
+           + 0.5 * self.lmbda * np.dot(u.T, u) \
+           + 0.5 * self.underact * np.dot(u_underact.T, u_underact)
         if self.CONTROL_BOUNDS:
             pass
         return cost
@@ -75,7 +75,7 @@ class DDPSolverLinearDyn(DDPSolver):
         ''' Gradient of the running cost w.r.t. u '''
 
         # Nullify the control on the first, not-actuated joint for under-actuation
-        u_underact = np.array(0, u[1])
+        u_underact = np.array([0, u[1]])
 
         c_u = self.lmbda * u \
               + self.underact * u_underact
