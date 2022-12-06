@@ -29,8 +29,8 @@ model_variation = 10.0
 PUSH = 1                         # flag to activate four pushes on the second joint (instantaneous variation of the second joint velocity) at N/8, N/4, N/2 and 3*N/4 simulation steps
 push_vec = np.array([0,3])       # instantaneous velocy increment of the second joint
 
-SELECTION_MATRIX = 1             # flag to use the selection matrix method
-ACTUATION_PENALTY = 0            # flag to use the actuation penalty method
+SELECTION_MATRIX = 0             # flag to use the selection matrix method
+ACTUATION_PENALTY = 1            # flag to use the actuation penalty method
 
 TORQUE_LIMITS = 0                # flag to bound controls
 
