@@ -386,12 +386,12 @@ if __name__ == '__main__':
                    loc='upper right')
 
     # Compute average tracking error
-    err_joint_1_pos = np.linalg.norm(X_sim[:, 0] - X[:, 0], 2)
-    err_joint_2_pos = np.linalg.norm(X_sim[:, 1] - X[:, 1], 2)
-    err_joint_1_torque = np.linalg.norm(U_sim[:, 0] - U[:, 0], 2)
-    err_joint_1_vel = np.linalg.norm(X_sim[:, 2] - X[:, 2], 2)
-    err_joint_2_vel = np.linalg.norm(X_sim[:, 3] - X[:, 3], 2)
-    print("ERRORS")
+    err_joint_1_pos = ((X_sim[:, 0] - X[:, 0])**2).mean()
+    err_joint_2_pos = ((X_sim[:, 1] - X[:, 1])**2).mean()
+    err_joint_1_torque = ((U_sim[:, 0] - U[:, 0])**2).mean()
+    err_joint_1_vel = ((X_sim[:, 2] - X[:, 2])**2).mean()
+    err_joint_2_vel = ((X_sim[:, 3] - X[:, 3])**2).mean()
+    print("\n" + " TRACKING MEAN SQUARE ERRORS ".center(conf.LINE_WIDTH, '*'))
     print("Joint 1 pos", err_joint_1_pos)
     print("Joint 2 pos", err_joint_2_pos)
     print("Joint 1 vel", err_joint_1_vel)
