@@ -34,7 +34,7 @@ class DDPSolverLinearDyn(DDPSolver):
         self.nu = self.nx
 
     def cost(self, X, U):
-        ''' total cost (running+final) for state trajectory X and control trajectory U '''
+        ''' Total cost (running+final) for state trajectory X and control trajectory U '''
         N = U.shape[0]
         cost = self.cost_final(X[-1, :])
         for i in range(N):
@@ -44,14 +44,15 @@ class DDPSolverLinearDyn(DDPSolver):
     def cost_running(self, i, x, u):
         ''' Running cost at time step i for state x and control u '''
 
-        # Nullify the control on the first, not-actuated joint for under-actuation
+        # Vector used for adding the under-actuation cost only for the second joint
         u_underact = np.array([0, u[1]])
 
         cost = 0.5 * np.dot(x, np.dot(self.H_xx[i, :, :], x)) \
-           + np.dot(self.h_x[i, :].T, x) + self.h_s[i] \
-           + 0.5 * self.lmbda * np.dot(u.T, u) \
-           + 0.5 * self.underact * np.dot(u_underact.T, u_underact)
+               + np.dot(self.h_x[i, :].T, x) + self.h_s[i] \
+               + 0.5 * self.lmbda * np.dot(u.T, u) \
+               + 0.5 * self.underact * np.dot(u_underact.T, u_underact)
         if self.CONTROL_BOUNDS:
+            # Not implemented because it is never used in this assignment
             pass
         return cost
 
@@ -74,12 +75,13 @@ class DDPSolverLinearDyn(DDPSolver):
     def cost_running_u(self, i, x, u):
         ''' Gradient of the running cost w.r.t. u '''
 
-        # Nullify the control on the first, not-actuated joint for under-actuation
+        # Vector used for adding the under-actuation cost only for the second joint
         u_underact = np.array([0, u[1]])
 
         c_u = self.lmbda * u \
               + self.underact * u_underact
         if self.CONTROL_BOUNDS:
+            # Not implemented because it is never used in this assignment
             pass
         return c_u
 
@@ -93,9 +95,13 @@ class DDPSolverLinearDyn(DDPSolver):
 
     def cost_running_uu(self, i, x, u):
         ''' Hessian of the running cost w.r.t. u '''
+
+        # For under-actuation, we use a 2x2 diagonal matrix with top-left element set to zero
+        # This means that only second joint (bottom-right element) incurs in the under-actuation cost
         c_uu = self.lmbda * np.eye(self.nu) \
                + self.underact * np.diag([0, 1])
         if self.CONTROL_BOUNDS:
+            # Not implemented because it is never used in this assignment
             pass
         return c_uu
 
@@ -214,7 +220,7 @@ class DDPSolverDoublePendulum(DDPSolverLinearDyn):
             time_start = time.time()
             self.simu.display(X[i, :self.robot.nq])
             time_spent = time.time() - time_start
-            if (time_spent < self.dt):
+            if time_spent < self.dt:
                 time.sleep(self.dt - time_spent)
 
     def start_simu(self, x0, X_bar, U_bar, KK, dt_sim, PUSH, TORQUE_LIMITS):
@@ -240,7 +246,7 @@ class DDPSolverDoublePendulum(DDPSolverLinearDyn):
             time_start = time.time()
             self.simu.display(X_sim[i, :self.robot.nq])
             time_spent = time.time() - time_start
-            if (time_spent < dt_sim):
+            if time_spent < dt_sim:
                 time.sleep(dt_sim - time_spent)
         print("Simulation finished")
         cost = self.cost(X_sim, U_sim)
@@ -268,15 +274,16 @@ if __name__ == '__main__':
     N = conf.N  # horizon size
     dt = conf.dt  # control time step
     mu = 10  # initial regularization
-    ddp_params = {}
-    ddp_params['alpha_factor'] = 0.5
-    ddp_params['mu_factor'] = 10.
-    ddp_params['mu_max'] = 1e0
-    ddp_params['min_alpha_to_increase_mu'] = 0.1
-    ddp_params['min_cost_impr'] = 1e-1
-    ddp_params['max_line_search_iter'] = 10
-    ddp_params['exp_improvement_threshold'] = 1e-3
-    ddp_params['max_iter'] = 200
+    ddp_params = {
+        'alpha_factor': 0.5,
+        'mu_factor': 10.,
+        'mu_max': 1e0,
+        'min_alpha_to_increase_mu': 0.1,
+        'min_cost_impr': 1e-1,
+        'max_line_search_iter': 10,
+        'exp_improvement_threshold': 1e-3,
+        'max_iter': 200
+    }
     DEBUG = False
 
     SELECTION_MATRIX = conf.SELECTION_MATRIX
@@ -288,10 +295,10 @@ if __name__ == '__main__':
 
     n = nq + nv  # state size
     m = robot.na  # control size
-    U_bar = np.zeros((N, m));  # initial guess for control inputs
+    U_bar = np.zeros((N, m))  # initial guess for control inputs
     x0 = np.concatenate((conf.q0, np.zeros(robot.nv)))  # initial state
     x_tasks = np.concatenate((conf.qT, np.zeros(robot.nv)))  # goal state
-    N_task = N;  # time step to reach goal state
+    N_task = N  # time step to reach goal state
 
     tau_g = robot.nle(conf.q0, np.zeros(robot.nv))
     for i in range(N):
@@ -343,7 +350,7 @@ if __name__ == '__main__':
         time_start = time.time()
         simu.display(X[i, :nq])
         time_spent = time.time() - time_start
-        if (time_spent < dt):
+        if time_spent < dt:
             time.sleep(dt - time_spent)
     print("Reference motion finished")
     time.sleep(1)
