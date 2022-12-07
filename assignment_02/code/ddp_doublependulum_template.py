@@ -256,11 +256,11 @@ if __name__ == '__main__':
     from orc.utils.robot_wrapper import RobotWrapper
     from orc.utils.robot_simulator import RobotSimulator
     import ddp_doublependulum_conf as conf
+    from traj.compare_traj import mean_squared_error
 
     np.set_printoptions(precision=3, suppress=True)
 
-    ''' Test DDP with a double pendulum
-    '''
+    ''' Test DDP with a double pendulum '''
     print("".center(conf.LINE_WIDTH, '#'))
     print(" DDP - Double Pendulum ".center(conf.LINE_WIDTH, '#'))
     print("".center(conf.LINE_WIDTH, '#'), '\n')
@@ -385,17 +385,12 @@ if __name__ == '__main__':
         plt.legend(["1st joint velocity", "1st joint ref. velocity", "2nd joint velocity", "2nd joint ref velocity"],
                    loc='upper right')
 
-    # Compute average tracking error
-    err_joint_1_pos = ((X_sim[:, 0] - X[:, 0])**2).mean()
-    err_joint_2_pos = ((X_sim[:, 1] - X[:, 1])**2).mean()
-    err_joint_1_torque = ((U_sim[:, 0] - U[:, 0])**2).mean()
-    err_joint_1_vel = ((X_sim[:, 2] - X[:, 2])**2).mean()
-    err_joint_2_vel = ((X_sim[:, 3] - X[:, 3])**2).mean()
+    # Compute tracking mean squared error tracking
     print("\n" + " TRACKING MEAN SQUARE ERRORS ".center(conf.LINE_WIDTH, '*'))
-    print("Joint 1 pos", err_joint_1_pos)
-    print("Joint 2 pos", err_joint_2_pos)
-    print("Joint 1 vel", err_joint_1_vel)
-    print("Joint 2 vel", err_joint_2_vel)
-    print("Joint 1 torque", err_joint_1_torque)
+    print("Joint 1 pos", mean_squared_error(X_sim[:, 0], X[:, 0]))
+    print("Joint 2 pos", mean_squared_error(X_sim[:, 1], X[:, 1]))
+    print("Joint 1 vel", mean_squared_error(U_sim[:, 0], U[:, 0]))
+    print("Joint 2 vel", mean_squared_error(X_sim[:, 2], X[:, 2]))
+    print("Joint 1 torque", mean_squared_error(X_sim[:, 3], X[:, 3]))
 
     plt.show()
