@@ -34,9 +34,9 @@ def sel_vs_pen():
     print("\n" + " MEAN SQUARED ERROR BETWEEN SELECTION AND PENALTY REFERENCE TRAJECTORIES ".center(60, '*'))
     print("Joint 1 pos = ", mean_squared_error(X_sel[:, 0], X_pen[:, 0]))
     print("Joint 2 pos = ", mean_squared_error(X_sel[:, 1], X_pen[:, 1]))
-    print("Joint 1 vel = ", mean_squared_error(U_sel[:, 0], U_pen[:, 0]))
-    print("Joint 2 vel = ", mean_squared_error(X_sel[:, 2], X_pen[:, 2]))
-    print("Joint 1 torque = ", mean_squared_error(X_sel[:, 3], X_pen[:, 3]))
+    print("Joint 1 vel = ", mean_squared_error(X_sel[:, 2], X_pen[:, 2]))
+    print("Joint 2 vel = ", mean_squared_error(X_sel[:, 3], X_pen[:, 3]))
+    print("Joint 1 torque = ", mean_squared_error(U_sel[:, 0], U_pen[:, 0]))
 
 
 def mu_factor_0_vs_10():
@@ -56,5 +56,5 @@ def mu_factor_0_vs_10():
 
 
 if __name__ == "__main__":
-    # sel_vs_pen()
+    sel_vs_pen()
     mu_factor_0_vs_10()
