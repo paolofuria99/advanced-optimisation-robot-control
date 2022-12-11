@@ -396,8 +396,8 @@ if __name__ == '__main__':
     print("\n" + " TRACKING MEAN SQUARE ERRORS ".center(conf.LINE_WIDTH, '*'))
     print("Joint 1 pos", mean_squared_error(X_sim[:, 0], X[:, 0]))
     print("Joint 2 pos", mean_squared_error(X_sim[:, 1], X[:, 1]))
-    print("Joint 1 vel", mean_squared_error(U_sim[:, 0], U[:, 0]))
-    print("Joint 2 vel", mean_squared_error(X_sim[:, 2], X[:, 2]))
-    print("Joint 1 torque", mean_squared_error(X_sim[:, 3], X[:, 3]))
+    print("Joint 1 vel", mean_squared_error(X_sim[:, 2], X[:, 2]))
+    print("Joint 2 vel", mean_squared_error(X_sim[:, 3], X[:, 3]))
+    print("Joint 1 torque", mean_squared_error(U_sim[:, 0], U[:, 0]))
 
     plt.show()
