@@ -50,9 +50,9 @@ def mu_factor_0_vs_10():
     print("\n" + " MEAN SQUARED ERROR BETWEEN MU FACTOR 0 AND 10 ".center(60, '*'))
     print("Joint 1 pos = ", mean_squared_error(X_0[:, 0], X_10[:, 0]))
     print("Joint 2 pos = ", mean_squared_error(X_0[:, 1], X_10[:, 1]))
-    print("Joint 1 vel = ", mean_squared_error(U_0[:, 0], U_10[:, 0]))
-    print("Joint 2 vel = ", mean_squared_error(X_0[:, 2], X_10[:, 2]))
-    print("Joint 1 torque = ", mean_squared_error(X_0[:, 3], X_10[:, 3]))
+    print("Joint 1 vel = ", mean_squared_error(X_0[:, 2], X_10[:, 2]))
+    print("Joint 2 vel = ", mean_squared_error(X_0[:, 3], X_10[:, 3]))
+    print("Joint 1 torque = ", mean_squared_error(U_0[:, 0], U_10[:, 0]))
 
 
 if __name__ == "__main__":
