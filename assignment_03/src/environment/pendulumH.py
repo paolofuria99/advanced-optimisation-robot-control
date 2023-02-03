@@ -195,3 +195,6 @@ class SinglePendulum:
             q_table: the Q table to plot
         """
         pass
+
+if __name__ == '__main__':
+    trial = SinglePendulum()
