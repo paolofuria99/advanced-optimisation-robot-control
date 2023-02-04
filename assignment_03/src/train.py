@@ -23,8 +23,11 @@ def main():
 
     model = Network.get_model(2, num_controls, "trial")
 
+    exit(1)
+
     dq = DQNet(model, hyper_params, env)
     model = dq.train()
+    model.save("models/")
 
 
 if __name__ == "__main__":
