@@ -31,10 +31,10 @@ class Network:
             A neural network model.
         """
         inputs = tf.keras.layers.Input(input_size)
-        state_out1 = tf.keras.layers.Dense(16, activation="relu")(inputs)
-        state_out2 = tf.keras.layers.Dense(32, activation="relu")(state_out1)
-        state_out3 = tf.keras.layers.Dense(64, activation="relu")(state_out2)
-        state_out4 = tf.keras.layers.Dense(64, activation="relu")(state_out3)
+        state_out1 = tf.keras.layers.Dense(16, activation="relu", kernel_initializer="variance_scaling")(inputs)
+        state_out2 = tf.keras.layers.Dense(32, activation="relu", kernel_initializer="variance_scaling")(state_out1)
+        state_out3 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out2)
+        state_out4 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out3)
         outputs = tf.keras.layers.Dense(output_size)(state_out4)
 
         return tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
@@ -158,62 +158,71 @@ class DQNet:
         """
         np_config.enable_numpy_behavior()
 
+        # Keep track of the best model
+        best_model = None
+        best_model_loss = np.inf
+
         # Set epsilon to its starting value, which will be decayed
         epsilon = self._hyper_params.epsilon_start
 
-        # Run training for a maximum number of episodes
-        for episode in range(self._hyper_params.max_episodes):
+        try:
+            # Run training for a maximum number of episodes
+            for episode in range(self._hyper_params.max_episodes):
 
-            print("======================")
-            print(f"EPISODE {episode + 1}")
-            print("======================")
+                print("======================")
+                print(f"EPISODE {episode + 1}")
+                print("======================")
 
-            # Reset the environment to a random state
-            self._env.reset()
-            # Keep track of running loss to compute mean loss for each episode
-            running_loss = 0.
+                # Reset the environment to a random state
+                self._env.reset()
+                # Keep track of running loss to compute mean loss for each episode
+                running_loss = 0.
 
-            # Run each episode for a maximum number of steps (or until the state is terminal)
-            for step in range(self._hyper_params.max_steps_per_episode):
+                # Run each episode for a maximum number of steps (or until the state is terminal)
+                for step in range(self._hyper_params.max_steps_per_episode):
 
-                # Decay the epsilon
-                epsilon = max(epsilon * self._hyper_params.epsilon_decay, self._hyper_params.epsilon_min)
+                    # Decay the epsilon
+                    epsilon = max(epsilon * self._hyper_params.epsilon_decay, self._hyper_params.epsilon_min)
 
-                # Choose an action and perform a step from the current state
-                curr_state = self._env.current_state
-                action = self.choose_action(epsilon)
-                new_state, cost = self._env.step(action)
+                    # Choose an action and perform a step from the current state
+                    curr_state = self._env.current_state
+                    action = self.choose_action(epsilon)
+                    new_state, cost = self._env.step(action)
 
-                # Store the experience in the experience-replay buffer
-                self._exp_buffer.append(
-                    DQNet.Experience(curr_state.to_np(), action, new_state.to_np(), cost, new_state.is_goal())
-                )
-                if self._exp_buffer.is_full():
-                    print("\t Experience buffer is now full.")
+                    # Store the experience in the experience-replay buffer
+                    self._exp_buffer.append(
+                        DQNet.Experience(curr_state.to_np(), action, new_state.to_np(), cost, new_state.is_goal())
+                    )
 
-                # Perform a training step (if the experience buffer has enough elements)
-                if self._exp_buffer.has_at_least(self._hyper_params.batch_size):
-                    running_loss += self.training_step()
+                    # Perform a training step (if the experience buffer has enough elements)
+                    if self._exp_buffer.has_at_least(self._hyper_params.batch_size):
+                        running_loss += self.training_step()
 
-                # Copy weights to target network every number of steps
-                if step != 0 and step % self._hyper_params.steps_for_target_update == 0:
-                    print(f"\t Step {step+1}, copying weights to target network.")
-                    self._q_target.set_weights(self._q_network.get_weights())
+                    # Copy weights to target network every number of steps
+                    if step != 0 and (step + 1) % self._hyper_params.steps_for_target_update == 0:
+                        print(f"\t Step {step + 1}, copying weights to target network.")
+                        self._q_target.set_weights(self._q_network.get_weights())
 
-                # End the episode if reached the goal
-                if new_state.is_goal():
-                    print("\t Reached goal!")
-                    mean_loss = running_loss / (episode + 1)
-                    print(f"\t Loss: {mean_loss}")
-                    print("======================")
-                    break
+                    # End the episode if reached the goal
+                    if new_state.is_goal():
+                        print("\t Reached goal!")
+                        mean_loss = running_loss / (episode + 1)
+                        print(f"\t Loss: {mean_loss}")
 
-            # Goal was not reached
-            print("\t Did not reach goal...")
-            print(f"\t Loss: {running_loss / self._hyper_params.max_steps_per_episode}")
-            print("======================")
+                        # Save the model as best if loss is better
+                        if best_model is None or mean_loss < best_model_loss:
+                            best_model = tf.keras.models.clone_model(self._q_network)
+                            best_model_loss = mean_loss
+                        break
 
-        return self._q_network
+                # Goal was not reached
+                print("\t Did not reach goal...")
+                mean_loss = running_loss / self._hyper_params.max_steps_per_episode
+                print(f"\t Loss: {mean_loss}")
+        except KeyboardInterrupt:
+            print("INTERRUPTED!")
+        finally:
+            return best_model
 
     def choose_action(self, epsilon: float) -> int:
         """

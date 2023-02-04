@@ -3,9 +3,11 @@ from __future__ import annotations
 import time
 from typing import Union, Tuple
 
+import tensorflow as tf
 import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.model.pendulum as model
+from orc.assignment_03.src.utils import Utils
 
 
 class State:
@@ -190,6 +192,21 @@ class SinglePendulum:
         new_state, _ = self._pendulum.dynamics(self.current_state.to_np(), torque)
         self.current_state = State.from_np(new_state, self._num_joints, self._max_vel)
         return self.current_state
+
+    def render_greedy_policy(self, q_network: tf.keras.Model) -> None:
+        """
+        Render the greedy policy as derived by a Deep Q Network
+
+        Args:
+            q_network: the Deep Q Network model to compute the Q function.
+        """
+        curr_state = self.reset()
+
+        while not curr_state.is_goal():
+            curr_state = Utils.np_2_tf(curr_state.to_np().reshape(1, -1))
+            q_values = tf.squeeze(q_network(curr_state))
+            action = int(tf.argmax(q_values))
+            curr_state, _ = self.step(action)
 
     @staticmethod
     def plot_V_table(v_table: np.typing.NDArray) -> None:

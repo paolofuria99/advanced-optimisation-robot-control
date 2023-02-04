@@ -5,14 +5,14 @@ from orc.assignment_03.src.environment.pendulum import SinglePendulum
 def main():
     hyper_params = DQNet.HyperParams(
         replay_size=10000,
-        replay_start=2000,
-        discount=0.99,
+        replay_start=1000,
+        discount=0.9,
         max_episodes=100,
-        max_steps_per_episode=10000,
+        max_steps_per_episode=100,
         steps_for_target_update=1000,
         epsilon_start=1.,
-        epsilon_decay=0.99995,
-        epsilon_min=0.1,
+        epsilon_decay=0.99,
+        epsilon_min=0.001,
         batch_size=1024,
         learning_rate=0.0001
     )
