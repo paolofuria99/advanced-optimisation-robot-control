@@ -4,10 +4,10 @@ import time
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
 
-import tensorflow as tf
 import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.model.pendulum as model
+import tensorflow as tf
 from orc.assignment_03.src.utils import Utils
 
 
@@ -24,33 +24,43 @@ class State:
             num_joints,
             max_vel,
             position: Union[npt.NDArray, None] = None,
-            velocity: Union[npt.NDArray, None] = None
+            velocity: Union[npt.NDArray, None] = None,
+            rng: np.random.Generator = np.random.default_rng()
     ):
-        self.num_joints = num_joints
-        self.max_vel = max_vel
-        self.position = position if position is not None else self._get_random_position()
-        self.velocity = velocity if velocity is not None else self._get_random_velocity()
+        self._rng = rng
+        self._num_joints = num_joints
+        self._max_vel = max_vel
+        self._position = position if position is not None else self._get_random_position()
+        self._velocity = velocity if velocity is not None else self._get_random_velocity()
 
-    @staticmethod
-    def from_np(array: npt.NDArray, num_joints: int, max_vel: float) -> State:
-        return State(num_joints, max_vel, position=array[:num_joints], velocity=array[num_joints:])
+    @property
+    def position(self):
+        return self._position
+
+    @property
+    def velocity(self):
+        return self._velocity
+
+    def set(self, position: npt.NDArray, velocity: npt.NDArray) -> None:
+        self._position = position
+        self._velocity = velocity
 
     def random(self):
-        self.position = self._get_random_position()
-        self.velocity = self._get_random_velocity()
+        self._position = self._get_random_position()
+        self._velocity = self._get_random_velocity()
 
     def is_goal(self) -> bool:
-        tmp = (self.position == np.zeros(self.num_joints)).all() and (self.velocity == np.zeros(self.num_joints)).all()
-        return tmp
+        return (self._position == np.zeros(self._num_joints)).all() \
+               and (self._velocity == np.zeros(self._num_joints)).all()
 
     def to_np(self) -> npt.NDArray:
-        return np.concatenate((self.position, self.velocity))
+        return np.concatenate((self._position, self._velocity))
 
     def _get_random_position(self) -> npt.ArrayLike:
-        return np.random.uniform(0, 2 * np.pi, self.num_joints)
+        return self._rng.uniform(0, 2 * np.pi, self._num_joints)
 
     def _get_random_velocity(self) -> npt.ArrayLike:
-        return np.random.uniform(-self.max_vel, self.max_vel, self.num_joints)
+        return self._rng.uniform(-self._max_vel, self._max_vel, self._num_joints)
 
 
 class Pendulum(ABC):
@@ -60,7 +70,6 @@ class Pendulum(ABC):
         The control space (joint torque) is discretized with the specified steps.
         Joint velocity and torque are saturated.
         Gaussian noise can be added in the dynamics.
-        Cost is -1 if the goal state has been reached, zero otherwise.
     """
 
     def __init__(
@@ -71,7 +80,8 @@ class Pendulum(ABC):
             num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
-            max_torque: float = 5
+            max_torque: float = 5,
+            rng: np.random.Generator = np.random.default_rng()
     ):
         """
         Initialize the pendulum environment.
@@ -84,6 +94,7 @@ class Pendulum(ABC):
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
+            rng: a random number generator. A default one is used if not specified.
         """
         # Initialize a pendulum model
         self._pendulum = model.Pendulum(num_joints, noise_std)
@@ -97,9 +108,10 @@ class Pendulum(ABC):
         self._max_vel = max_vel
         self._max_torque = max_torque
         self._dis_res_torque = 2 * max_torque / num_controls  # Discretization resolution for joint torque
+        self._rng = rng
 
         # Randomly initialize current state
-        self.current_state = State(num_joints, max_vel)
+        self.current_state = State(num_joints, max_vel, rng=rng)
 
     @property
     def num_controls(self):
@@ -133,7 +145,7 @@ class Pendulum(ABC):
         if state is None:
             self.current_state.random()
         else:
-            self.current_state = state
+            self.current_state.set(state.position, state.velocity)
 
         if display:
             self.render()
@@ -178,7 +190,9 @@ class Pendulum(ABC):
         """
         torque = self.d2c_torque(torque_idx)
         new_state, cost = self._pendulum.dynamics(self.current_state.to_np(), torque)
-        self.current_state = State.from_np(new_state, self._num_joints, self._max_vel)
+
+        self.current_state.set(new_state[:self._num_joints], new_state[self._num_joints:])
+
         return self.current_state, cost
 
     def render_greedy_policy(self, q_network: tf.keras.Model) -> None:
@@ -235,7 +249,8 @@ class SinglePendulum(Pendulum):
             num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
-            max_torque: float = 5
+            max_torque: float = 5,
+            rng: np.random.Generator = np.random.default_rng()
     ):
         """
         Initialize the single pendulum environment.
@@ -247,9 +262,10 @@ class SinglePendulum(Pendulum):
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
+            rng: a random number generator. A default one is used if not specified.
         """
         super(SinglePendulum, self).__init__(
-            1, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque
+            1, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque, rng
         )
 
     def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
@@ -276,7 +292,8 @@ class DoublePendulumUnderact(Pendulum):
             num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
-            max_torque: float = 5
+            max_torque: float = 5,
+            rng: np.random.Generator = np.random.default_rng()
     ):
         """
         Initialize the underactuated double pendulum environment.
@@ -288,9 +305,10 @@ class DoublePendulumUnderact(Pendulum):
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
+            rng: a random number generator. A default one is used if not specified.
         """
         super(DoublePendulumUnderact, self).__init__(
-            2, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque
+            2, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque, rng
         )
 
     def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:

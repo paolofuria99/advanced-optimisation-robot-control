@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Tuple, NamedTuple
 
 import numpy as np
-import numpy.random
 import numpy.typing as npt
 import orc.assignment_03.src.environment.pendulum as environment
 import tensorflow as tf
@@ -76,12 +75,12 @@ class DQNet:
         and the latter is not provided by deque.
         """
 
-        def __init__(self, size: int) -> None:
+        def __init__(self, size: int, rng: np.random.Generator) -> None:
             self._buffer = np.empty(size, dtype=DQNet.Experience)
             self._index = 0
             self._num_elements = 0
             self._size = size
-            self._rng = numpy.random.default_rng()
+            self._rng = rng
 
         def append(self, experience: DQNet.Experience) -> None:
             """
@@ -140,15 +139,19 @@ class DQNet:
             self,
             network_model: tf.keras.Model,
             hyper_params: HyperParams,
-            env: environment.Pendulum
+            env: environment.Pendulum,
+            rng: np.random.Generator = np.random.default_rng()
     ) -> None:
         self._q_network = tf.keras.models.clone_model(network_model)
         self._q_target = tf.keras.models.clone_model(network_model)
         self._hyper_params = hyper_params
         self._env = env
 
+        # Set the rng
+        self._rng = rng
+
         # Prepare the experience replay buffer
-        self._exp_buffer = DQNet.ExperienceBuffer(self._hyper_params.replay_size)
+        self._exp_buffer = DQNet.ExperienceBuffer(self._hyper_params.replay_size, self._rng)
 
     def train(self) -> tf.keras.Model:
         """
@@ -244,7 +247,7 @@ class DQNet:
             An action.
         """
         if np.random.uniform() < epsilon:
-            action = np.random.randint(0, self._env.num_controls)
+            action = self._rng.integers(0, self._env.num_controls)
         else:
             np_state = self._env.current_state.to_np().reshape((1, -1))
             action = int(np.argmin(self._q_network(np_state), axis=1)[0])
