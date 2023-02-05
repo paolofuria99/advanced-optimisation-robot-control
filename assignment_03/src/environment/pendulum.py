@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.model.pendulum as model
 import tensorflow as tf
-from orc.assignment_03.src.utils import Utils
+from orc.assignment_03.src.utils import NumpyUtils
 
 
 class State:
@@ -57,7 +57,7 @@ class State:
         return np.concatenate((self._position, self._velocity))
 
     def _get_random_position(self) -> npt.ArrayLike:
-        return self._rng.uniform(0, 2 * np.pi, self._num_joints)
+        return self._rng.uniform(-np.pi, np.pi, self._num_joints)
 
     def _get_random_velocity(self) -> npt.ArrayLike:
         return self._rng.uniform(-self._max_vel, self._max_vel, self._num_joints)
@@ -97,9 +97,7 @@ class Pendulum(ABC):
             rng: a random number generator. A default one is used if not specified.
         """
         # Initialize a pendulum model
-        self._pendulum = model.Pendulum(num_joints, noise_std)
-        self._pendulum.DT = time_step
-        self._pendulum.NDT = num_euler_steps
+        self._pendulum = model.Pendulum(num_joints, max_vel, max_torque, noise_std, time_step, num_euler_steps)
 
         # Setup attributes
         self._num_joints = num_joints
@@ -175,7 +173,7 @@ class Pendulum(ABC):
         Display the pendulum in the current state.
         """
         self._pendulum.display(self.current_state.position)
-        time.sleep(self._pendulum.DT)
+        time.sleep(self._time_step)
 
     def dynamics(self, torque_idx: int) -> Tuple[State, float]:
         """
@@ -205,7 +203,7 @@ class Pendulum(ABC):
         curr_state = self.reset()
 
         while not curr_state.is_goal():
-            curr_state = Utils.np_2_tf(curr_state.to_np().reshape(1, -1))
+            curr_state = NumpyUtils.np_2_tf(curr_state.to_np().reshape(1, -1))
             q_values = tf.squeeze(q_network(curr_state))
             action = int(tf.argmax(q_values))
             curr_state, _ = self.step(action)

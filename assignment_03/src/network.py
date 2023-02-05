@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.pendulum as environment
 import tensorflow as tf
-from orc.assignment_03.src.utils import Utils
+from orc.assignment_03.src.utils import NumpyUtils
 from tensorflow.python.ops.numpy_ops import np_config
 
 
@@ -266,11 +266,11 @@ class DQNet:
         with tf.GradientTape() as tape:
             # Sample experiences, unpack them, and convert them into tensors
             curr_states, actions, next_states, costs, goals = self._exp_buffer.sample(self._hyper_params.batch_size)
-            curr_states = Utils.np_2_tf(curr_states)
-            actions = Utils.np_2_tf(actions)
-            next_states = Utils.np_2_tf(next_states)
-            costs = Utils.np_2_tf(costs)
-            goals = Utils.np_2_tf(tf.squeeze(goals))
+            curr_states = NumpyUtils.np_2_tf(curr_states)
+            actions = NumpyUtils.np_2_tf(actions)
+            next_states = NumpyUtils.np_2_tf(next_states)
+            costs = NumpyUtils.np_2_tf(costs)
+            goals = NumpyUtils.np_2_tf(tf.squeeze(goals))
 
             # Compute target values
             # The target network is not to be trained
