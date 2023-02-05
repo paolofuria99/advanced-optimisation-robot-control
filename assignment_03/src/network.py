@@ -162,9 +162,8 @@ class DQNet:
         """
         np_config.enable_numpy_behavior()
 
-        # Keep track of the best model
         best_model = None
-        best_model_loss = np.inf
+        best_running_cost = np.inf
 
         # Set epsilon to its starting value, which will be decayed
         epsilon = self._hyper_params.epsilon_start
@@ -179,11 +178,11 @@ class DQNet:
 
                 display = ((episode + 1) % self._hyper_params.display_every_episodes) == 0
                 reached_goal = False
+                running_cost = 0.
+                gamma = 1
 
                 # Reset the environment to a random state
                 self._env.reset(display=display)
-                # Keep track of running loss to compute mean loss for each episode
-                running_loss = 0.
 
                 # Run each episode for a maximum number of steps (or until the state is terminal)
                 for step in range(self._hyper_params.max_steps_per_episode):
@@ -196,6 +195,9 @@ class DQNet:
                     action = self.choose_action(epsilon)
                     new_state, cost = self._env.step(action, display=display)
 
+                    running_cost += gamma * cost
+                    gamma = gamma * self._hyper_params.discount
+
                     # Store the experience in the experience-replay buffer
                     self._exp_buffer.append(
                         DQNet.Experience(curr_state.to_np(), action, new_state.to_np(), cost, new_state.is_goal())
@@ -203,7 +205,7 @@ class DQNet:
 
                     # Perform a training step (if the experience buffer has enough elements)
                     if self._exp_buffer.has_at_least(self._hyper_params.batch_size):
-                        running_loss += self.training_step()
+                        self.training_step()
 
                     # Copy weights to target network every number of steps
                     if step != 0 and (step + 1) % self._hyper_params.steps_for_target_update == 0:
@@ -217,19 +219,16 @@ class DQNet:
 
                 if reached_goal:
                     print("\t Reached goal!")
-                    mean_loss = running_loss / (episode + 1)
-                    print(f"\t Loss: {mean_loss}")
-                    print(f"\t Epsilon: {epsilon}")
-
-                    # Save the model as best if loss is better
-                    if best_model is None or mean_loss < best_model_loss:
-                        best_model = tf.keras.models.clone_model(self._q_network)
-                        best_model_loss = mean_loss
                 else:
                     print("\t Did not reach goal...")
-                    mean_loss = running_loss / self._hyper_params.max_steps_per_episode
-                    print(f"\t Loss: {mean_loss}")
-                    print(f"\t Epsilon: {epsilon}")
+                print(f"\t Epsilon: {epsilon}")
+                print(f"\t Running cost: {running_cost}")
+
+                # Save the model as best if running cost improved
+                if best_model is None or running_cost < best_running_cost:
+                    best_model = tf.keras.models.clone_model(self._q_network)
+                    best_running_cost = running_cost
+
         except KeyboardInterrupt:
             print("INTERRUPTED!")
             return best_model

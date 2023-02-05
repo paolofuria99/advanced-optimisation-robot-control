@@ -8,7 +8,7 @@ def main():
     hyper_params = DQNet.HyperParams(
         replay_size=10000,
         replay_start=1000,
-        discount=0.9,
+        discount=0.99,
         max_episodes=500,
         max_steps_per_episode=100,
         steps_for_target_update=50,
@@ -16,8 +16,8 @@ def main():
         epsilon_decay=0.99,
         epsilon_min=0.01,
         batch_size=256,
-        learning_rate=0.09,
-        display_every_episodes=1
+        learning_rate=0.001,
+        display_every_episodes=25
     )
 
     num_joints = 1

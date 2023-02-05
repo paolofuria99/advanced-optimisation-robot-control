@@ -200,13 +200,13 @@ class Pendulum(ABC):
         Args:
             q_network: the Deep Q Network model to compute the Q function.
         """
-        curr_state = self.reset()
+        curr_state = self.reset(display=True)
 
         while not curr_state.is_goal():
             curr_state = NumpyUtils.np_2_tf(curr_state.to_np().reshape(1, -1))
             q_values = tf.squeeze(q_network(curr_state))
             action = int(tf.argmax(q_values))
-            curr_state, _ = self.step(action)
+            curr_state, _ = self.step(action, display=True)
 
     @staticmethod
     def plot_V_table(v_table: np.typing.NDArray) -> None:
