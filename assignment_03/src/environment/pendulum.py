@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from abc import ABC, abstractmethod
 from typing import Union, Tuple
 
 import tensorflow as tf
@@ -22,8 +23,8 @@ class State:
             self,
             num_joints,
             max_vel,
-            position: Union[npt.ArrayLike, None] = None,
-            velocity: Union[npt.ArrayLike, None] = None
+            position: Union[npt.NDArray, None] = None,
+            velocity: Union[npt.NDArray, None] = None
     ):
         self.num_joints = num_joints
         self.max_vel = max_vel
@@ -39,7 +40,8 @@ class State:
         self.velocity = self._get_random_velocity()
 
     def is_goal(self) -> bool:
-        return self.position == np.zeros(self.num_joints) and self.velocity == np.zeros(self.num_joints)
+        tmp = (self.position == np.zeros(self.num_joints)).all() and (self.velocity == np.zeros(self.num_joints)).all()
+        return tmp
 
     def to_np(self) -> npt.NDArray:
         return np.concatenate((self.position, self.velocity))
@@ -51,73 +53,59 @@ class State:
         return np.random.uniform(-self.max_vel, self.max_vel, self.num_joints)
 
 
-class SinglePendulum:
+class Pendulum(ABC):
     """
-    A single pendulum environment.
-    The state space (joint angle, velocity) is continuous.
-    The control space (joint torque) is discretized with the specified steps.
-    Joint velocity and torque are saturated.
-    Gaussian noise can be added in the dynamics.
-    Cost is -1 if the goal state has been reached, zero otherwise.
+        A pendulum environment.
+        The state space (joint angle, velocity) is continuous.
+        The control space (joint torque) is discretized with the specified steps.
+        Joint velocity and torque are saturated.
+        Gaussian noise can be added in the dynamics.
+        Cost is -1 if the goal state has been reached, zero otherwise.
     """
 
     def __init__(
             self,
+            num_joints: int,
             noise_std: float = 0,
-            time_step: float = 0.2,
+            time_step: float = 0.05,
             num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
-            max_torque: float = 5,
-            display: bool = False
+            max_torque: float = 5
     ):
         """
-        Initialize the single-pendulum environment.
+        Initialize the pendulum environment.
 
         Args:
+            num_joints: the number of joints of the pendulum.
             noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
             time_step: the length, in seconds, of a time step.
             num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
-            display: whether to display the model on Gepetto Viewer or not.
         """
-        # Initialize a pendulum model with 1 joint
-        self._num_joints = 1
-        self._pendulum = model.Pendulum(self._num_joints, noise_std)
+        # Initialize a pendulum model
+        self._pendulum = model.Pendulum(num_joints, noise_std)
         self._pendulum.DT = time_step
         self._pendulum.NDT = num_euler_steps
 
         # Setup attributes
+        self._num_joints = num_joints
         self._time_step = time_step
         self._num_controls = num_controls
         self._max_vel = max_vel
         self._max_torque = max_torque
         self._dis_res_torque = 2 * max_torque / num_controls  # Discretization resolution for joint torque
-        self._state_dimensions = 1  # The dimensions of the state (joint or velocity), 1 in this case
-        self._display = display
 
         # Randomly initialize current state
-        self.current_state = State(1, self._max_vel)
+        self.current_state = State(num_joints, max_vel)
 
     @property
     def num_controls(self):
         return self._num_controls
 
-    def c2d_torque(self, torque: np.typing.NDArray) -> int:
-        """
-        Discretize a continuous torque.
-
-        Args:
-            torque: the torque array to discretize
-
-        Returns:
-            The discretized torque: an integer between 0 and control_size-1
-        """
-        torque = np.clip(torque, -self._max_torque + 1e-3, self._max_torque - 1e-3)
-        return int(np.floor((torque + self._max_torque) / self._dis_res_torque))
-
+    @abstractmethod
     def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
         """
         Convert a discretized torque into a continuous vector.
@@ -128,16 +116,16 @@ class SinglePendulum:
         Returns:
             The continuous torque.
         """
-        discrete_torque = np.clip(torque_idx, 0, self._num_controls - 1) - ((self._num_controls - 1) / 2)
-        return discrete_torque * self._dis_res_torque
+        pass
 
-    def reset(self, state: State = None) -> State:
+    def reset(self, state: State = None, display: bool = False) -> State:
         """
         Reset the environment, either to a provided state or a random one.
 
         Args:
-            state (optional): the state in which you want to reset the environment. If not specified,
+            state: the state in which you want to reset the environment. If not specified,
                 a random state will be used.
+            display: whether to display on Gepetto Viewer.
 
         Returns:
             the new state of the environment.
@@ -147,25 +135,25 @@ class SinglePendulum:
         else:
             self.current_state = state
 
-        if self._display:
+        if display:
             self.render()
 
         return self.current_state
 
-    def step(self, torque_idx: int) -> Tuple[State, float]:
+    def step(self, torque_idx: int, display: bool = False) -> Tuple[State, float]:
         """
         Perform a step by applying the given control input.
 
         Args:
             torque_idx: the control input to apply.
+            display: whether to display on Gepetto Viewer.
 
         Returns:
             The new state, and the cost of applying the control input.
         """
-        self.current_state = self.dynamics(torque_idx)
-        cost = -1 if self.current_state.is_goal() else 0
+        self.current_state, cost = self.dynamics(torque_idx)
 
-        if self._display:
+        if display:
             self.render()
 
         return self.current_state, cost
@@ -177,21 +165,21 @@ class SinglePendulum:
         self._pendulum.display(self.current_state.position)
         time.sleep(self._pendulum.DT)
 
-    def dynamics(self, torque_idx: int) -> State:
+    def dynamics(self, torque_idx: int) -> Tuple[State, float]:
         """
         Apply a discretized control input to the dynamics of the pendulum,
-        to get the new state.
+        to get the new state and the cost of applying the control.
 
         Args:
             torque_idx: the discretized control input (between 0 and control_size-1).
 
         Returns:
-            The new state.
+            The new state and the cost of applying the control.
         """
         torque = self.d2c_torque(torque_idx)
-        new_state, _ = self._pendulum.dynamics(self.current_state.to_np(), torque)
+        new_state, cost = self._pendulum.dynamics(self.current_state.to_np(), torque)
         self.current_state = State.from_np(new_state, self._num_joints, self._max_vel)
-        return self.current_state
+        return self.current_state, cost
 
     def render_greedy_policy(self, q_network: tf.keras.Model) -> None:
         """
@@ -236,3 +224,87 @@ class SinglePendulum:
             q_table: the Q table to plot
         """
         pass
+
+
+class SinglePendulum(Pendulum):
+
+    def __init__(
+            self,
+            noise_std: float = 0,
+            time_step: float = 0.05,
+            num_euler_steps: int = 1,
+            num_controls: int = 11,
+            max_vel: float = 5,
+            max_torque: float = 5
+    ):
+        """
+        Initialize the single pendulum environment.
+
+        Args:
+            noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
+            time_step: the length, in seconds, of a time step.
+            num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
+            num_controls: the number of discretization steps for joint torque.
+            max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
+            max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
+        """
+        super(SinglePendulum, self).__init__(
+            1, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque
+        )
+
+    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+        """
+        Convert a discretized torque into a continuous vector.
+
+        Args:
+            torque_idx: the torque to convert: an integer between 0 and control_size-1.
+
+        Returns:
+            The continuous torque.
+        """
+        discrete_torque = np.clip(torque_idx, 0, self._num_controls - 1) - ((self._num_controls - 1) / 2)
+        torque = discrete_torque * self._dis_res_torque
+        return np.array(torque)
+
+
+class DoublePendulumUnderact(Pendulum):
+
+    def __init__(
+            self,
+            noise_std: float = 0,
+            time_step: float = 0.05,
+            num_euler_steps: int = 1,
+            num_controls: int = 11,
+            max_vel: float = 5,
+            max_torque: float = 5
+    ):
+        """
+        Initialize the underactuated double pendulum environment.
+
+        Args:
+            noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
+            time_step: the length, in seconds, of a time step.
+            num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
+            num_controls: the number of discretization steps for joint torque.
+            max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
+            max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
+        """
+        super(DoublePendulumUnderact, self).__init__(
+            2, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque
+        )
+
+    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+        """
+        Convert a discretized torque into a continuous vector.
+        The torque for the second joint is set to 0 for underactuation.
+
+        Args:
+            torque_idx: the torque to convert: an integer between 0 and control_size-1.
+
+        Returns:
+            The continuous torque.
+        """
+        torque = np.zeros(2)
+        discrete_torque = np.clip(torque_idx, 0, self._num_controls - 1) - ((self._num_controls - 1) / 2)
+        torque[0] = discrete_torque * self._dis_res_torque
+        return torque
