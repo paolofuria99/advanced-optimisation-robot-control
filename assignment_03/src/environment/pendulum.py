@@ -6,7 +6,7 @@ from typing import Union, Tuple
 
 import numpy as np
 import numpy.typing as npt
-import orc.assignment_03.src.environment.model.pendulum as model
+import orc.assignment_03.src.environment.model.model as model
 import tensorflow as tf
 from orc.assignment_03.src.utils import NumpyUtils
 
