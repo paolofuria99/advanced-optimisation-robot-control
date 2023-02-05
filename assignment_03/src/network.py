@@ -182,9 +182,6 @@ class DQNet:
 
                 # Reset the environment to a random state
                 self._env.reset(display=display)
-
-                print(self._env.current_state.position)
-                print(self._env.current_state.velocity)
                 # Keep track of running loss to compute mean loss for each episode
                 running_loss = 0.
 
