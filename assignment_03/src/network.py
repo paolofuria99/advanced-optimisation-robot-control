@@ -56,6 +56,7 @@ class DQNet:
         epsilon_min: float
         batch_size: int
         learning_rate: float
+        display_every_episodes: int
 
     class Experience(NamedTuple):
         """
@@ -139,7 +140,7 @@ class DQNet:
             self,
             network_model: tf.keras.Model,
             hyper_params: HyperParams,
-            env: environment.SinglePendulum
+            env: environment.Pendulum
     ) -> None:
         self._q_network = tf.keras.models.clone_model(network_model)
         self._q_target = tf.keras.models.clone_model(network_model)
@@ -173,8 +174,11 @@ class DQNet:
                 print(f"EPISODE {episode + 1}")
                 print("======================")
 
+                display = ((episode + 1) % self._hyper_params.display_every_episodes) == 0
+                reached_goal = False
+
                 # Reset the environment to a random state
-                self._env.reset()
+                self._env.reset(display=display)
                 # Keep track of running loss to compute mean loss for each episode
                 running_loss = 0.
 
@@ -187,7 +191,7 @@ class DQNet:
                     # Choose an action and perform a step from the current state
                     curr_state = self._env.current_state
                     action = self.choose_action(epsilon)
-                    new_state, cost = self._env.step(action)
+                    new_state, cost = self._env.step(action, display=display)
 
                     # Store the experience in the experience-replay buffer
                     self._exp_buffer.append(
@@ -205,24 +209,29 @@ class DQNet:
 
                     # End the episode if reached the goal
                     if new_state.is_goal():
-                        print("\t Reached goal!")
-                        mean_loss = running_loss / (episode + 1)
-                        print(f"\t Loss: {mean_loss}")
-
-                        # Save the model as best if loss is better
-                        if best_model is None or mean_loss < best_model_loss:
-                            best_model = tf.keras.models.clone_model(self._q_network)
-                            best_model_loss = mean_loss
+                        reached_goal = True
                         break
 
-                # Goal was not reached
-                print("\t Did not reach goal...")
-                mean_loss = running_loss / self._hyper_params.max_steps_per_episode
-                print(f"\t Loss: {mean_loss}")
+                if reached_goal:
+                    print("\t Reached goal!")
+                    mean_loss = running_loss / (episode + 1)
+                    print(f"\t Loss: {mean_loss}")
+                    print(f"\t Epsilon: {epsilon}")
+
+                    # Save the model as best if loss is better
+                    if best_model is None or mean_loss < best_model_loss:
+                        best_model = tf.keras.models.clone_model(self._q_network)
+                        best_model_loss = mean_loss
+                else:
+                    print("\t Did not reach goal...")
+                    mean_loss = running_loss / self._hyper_params.max_steps_per_episode
+                    print(f"\t Loss: {mean_loss}")
+                    print(f"\t Epsilon: {epsilon}")
         except KeyboardInterrupt:
             print("INTERRUPTED!")
-        finally:
             return best_model
+        except Exception as e:
+            raise e
 
     def choose_action(self, epsilon: float) -> int:
         """
@@ -238,7 +247,7 @@ class DQNet:
             action = np.random.randint(0, self._env.num_controls)
         else:
             np_state = self._env.current_state.to_np().reshape((1, -1))
-            action = int(np.argmax(self._q_network(np_state), axis=1)[0])
+            action = int(np.argmin(self._q_network(np_state), axis=1)[0])
         return action
 
     def training_step(self) -> float:
@@ -262,7 +271,7 @@ class DQNet:
 
             # Compute target values
             # The target network is not to be trained
-            target_state_action_value = tf.reduce_max(self._q_target(next_states, training=False), axis=1)
+            target_state_action_value = tf.reduce_min(self._q_target(next_states, training=False), axis=1)
             # If the state is a goal, keep only the cost; otherwise, keep the Q-value
             target_state_action_value = tf.where(
                 goals, tf.cast(costs, target_state_action_value.dtype), target_state_action_value
