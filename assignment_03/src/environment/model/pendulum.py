@@ -166,13 +166,13 @@ class Pendulum:
             pin.computeAllTerms(self.model,self.data,q,v)
             M   = self.data.M
             b   = self.data.nle
-            a   = inv(M)@(u-self.Kf*v-b)
+            a   = inv(M) @ (u-self.Kf*v-b)  # use dot product, needed when joints > 1
             a   = a.reshape(self.nv) + np.random.randn(self.nv)*self.noise_stddev
             self.a = a
 
             q    += (v+0.5*DT*a)*DT
             v    += a*DT
-            cost += (sumsq(q) + 1e-1*sumsq(v) + 1e-3*sumsq(u))*DT # cost function
+            cost += (sumsq(q) + 1e-1*sumsq(v) + 1e-3*sumsq(u))*DT  # cost function
 
             if display:
                 self.display(q)
@@ -181,7 +181,7 @@ class Pendulum:
         x[:self.nq] = modulePi(q)
         x[self.nq:] = np.clip(v,-self.vmax,self.vmax)
         
-        return x,-cost
+        return x, cost  # remove negation of cost
      
     def render(self):
         q = self.x[:self.nq]
