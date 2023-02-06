@@ -33,8 +33,9 @@ class Network:
         state_out1 = tf.keras.layers.Dense(16, activation="relu", kernel_initializer="variance_scaling")(inputs)
         state_out2 = tf.keras.layers.Dense(32, activation="relu", kernel_initializer="variance_scaling")(state_out1)
         state_out3 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out2)
-        state_out4 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out3)
-        outputs = tf.keras.layers.Dense(output_size)(state_out4)
+        state_out4 = tf.keras.layers.Dense(128, activation="relu", kernel_initializer="variance_scaling")(state_out3)
+        state_out5 = tf.keras.layers.Dense(128, activation="relu", kernel_initializer="variance_scaling")(state_out4)
+        outputs = tf.keras.layers.Dense(output_size)(state_out5)
 
         return tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
 
@@ -112,7 +113,12 @@ class DQNet:
             """
             indices = self._rng.choice(self._num_elements, quantity, replace=False)
             curr_states, actions, next_states, costs, goals = zip(*[self._buffer[idx] for idx in indices])
-            return np.array(curr_states), np.array(actions), np.array(next_states), np.array(costs), np.array(goals)
+            return \
+                np.array(curr_states), \
+                np.array(actions, dtype=np.int), \
+                np.array(next_states), \
+                np.array(costs, dtype=np.float), \
+                np.array(goals, dtype=np.bool)
 
         def is_full(self) -> bool:
             """
@@ -176,12 +182,15 @@ class DQNet:
                 print(f"EPISODE {episode + 1}")
                 print("======================")
 
+                # Flag to know if to display or not
                 display = ((episode + 1) % self._hyper_params.display_every_episodes) == 0
+
+                # Initialize variables to keep track of progress
                 reached_goal = False
                 running_cost = 0.
-                gamma = 1
+                gamma = 1.
 
-                # Reset the environment to a random state
+                # Set the environment to a random state
                 self._env.reset(display=display)
 
                 # Run each episode for a maximum number of steps (or until the state is terminal)
@@ -204,7 +213,7 @@ class DQNet:
                     )
 
                     # Perform a training step (if the experience buffer has enough elements)
-                    if self._exp_buffer.has_at_least(self._hyper_params.batch_size):
+                    if self._exp_buffer.has_at_least(self._hyper_params.replay_start):
                         self.training_step()
 
                     # Copy weights to target network every number of steps
@@ -229,6 +238,8 @@ class DQNet:
                     best_model = tf.keras.models.clone_model(self._q_network)
                     best_running_cost = running_cost
 
+            return best_model
+
         except KeyboardInterrupt:
             print("INTERRUPTED!")
             return best_model
@@ -248,8 +259,8 @@ class DQNet:
         if self._rng.uniform() < epsilon:
             action = self._rng.integers(0, self._env.num_controls)
         else:
-            np_state = self._env.current_state.to_np().reshape((1, -1))
-            action = int(np.argmin(self._q_network(np_state), axis=1)[0])
+            np_state = self._env.current_state.to_np().reshape((1, -1))  # Reshape into a batch of 1 state
+            action = int(np.argmin(self._q_network(np_state)[0]))
         return action
 
     def training_step(self) -> float:
@@ -274,9 +285,11 @@ class DQNet:
             # Compute target values
             # The target network is not to be trained
             target_state_action_value = tf.reduce_min(self._q_target(next_states, training=False), axis=1)
-            # If the state is a goal, keep only the cost; otherwise, keep the Q-value
+            # If the state is a goal, keep only the cost; otherwise, keep the cost plus discounted Q-value
             target_state_action_value = tf.where(
-                goals, tf.cast(costs, target_state_action_value.dtype), target_state_action_value
+                goals,
+                costs,
+                costs + (self._hyper_params.discount * target_state_action_value)
             )
 
             # Compute actual Q values
