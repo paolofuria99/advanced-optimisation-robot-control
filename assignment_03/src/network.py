@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Tuple, NamedTuple
+import collections
+from typing import NamedTuple, List
 
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +34,7 @@ class Network:
         state_out1 = tf.keras.layers.Dense(16, activation="relu", kernel_initializer="variance_scaling")(inputs)
         state_out2 = tf.keras.layers.Dense(32, activation="relu", kernel_initializer="variance_scaling")(state_out1)
         state_out3 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out2)
-        state_out4 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out3)
+        state_out4 = tf.keras.layers.Dense(32, activation="relu", kernel_initializer="variance_scaling")(state_out3)
         outputs = tf.keras.layers.Dense(output_size)(state_out4)
 
         return tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
@@ -76,10 +77,7 @@ class DQNet:
         """
 
         def __init__(self, size: int, rng: np.random.Generator) -> None:
-            self._buffer = np.empty(size, dtype=DQNet.Experience)
-            self._index = 0
-            self._num_elements = 0
-            self._size = size
+            self._buffer = collections.deque(maxlen=size)
             self._rng = rng
 
         def append(self, experience: DQNet.Experience) -> None:
@@ -90,12 +88,9 @@ class DQNet:
             Args:
                 experience: the experience to add.
             """
-            self._buffer[self._index] = experience
-            self._index = (self._index + 1) % self._size
-            if self._num_elements < self._size:
-                self._num_elements += 1
+            self._buffer.append(experience)
 
-        def sample(self, quantity: int) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+        def sample(self, quantity: int) -> List[DQNet.Experience]:
             """
             Sample uniformly a batch of experiences.
 
@@ -103,30 +98,11 @@ class DQNet:
                 quantity: how many experiences to sample.
 
             Returns:
-                A tuple containing, respectively,
-                an array of all the starting states of each experience;
-                an array of all the actions taken in each experience;
-                an array of all the resulting states of each experience (after applying the corresponding action);
-                an array of all the costs of taking an action in each experience;
-                a boolean mask that says which experiences resulted in a goal state.
+                A batch of experiences.
             """
-            indices = self._rng.choice(self._num_elements, quantity, replace=False)
-            curr_states, actions, next_states, costs, goals = zip(*[self._buffer[idx] for idx in indices])
-            return \
-                np.array(curr_states), \
-                np.array(actions, dtype=np.int), \
-                np.array(next_states), \
-                np.array(costs, dtype=np.float), \
-                np.array(goals, dtype=np.bool)
-
-        def is_full(self) -> bool:
-            """
-            Check if the buffer is full or not.
-
-            Returns:
-                True if it is full, False otherwise.
-            """
-            return self._num_elements == self._size
+            quantity = max(quantity, len(self._buffer))
+            indices = self._rng.choice(range(len(self._buffer)), quantity, replace=False)
+            return [self._buffer[idx] for idx in indices]
 
         def has_at_least(self, quantity: int) -> bool:
             """
@@ -138,7 +114,7 @@ class DQNet:
             Returns:
                 True if there are enough experiences, False otherwise.
             """
-            return self._num_elements >= quantity
+            return len(self._buffer) >= quantity
 
     def __init__(
             self,
@@ -184,7 +160,7 @@ class DQNet:
                 # Flag to know if to display or not
                 display = ((episode + 1) % self._hyper_params.display_every_episodes) == 0
 
-                # Initialize variables to keep track of progress
+                # Initialize variables to keep track of progress in this episode
                 reached_goal = False
                 running_cost = 0.
                 gamma = 1.
@@ -195,20 +171,22 @@ class DQNet:
                 # Run each episode for a maximum number of steps (or until the state is terminal)
                 for step in range(self._hyper_params.max_steps_per_episode):
 
-                    # Decay the epsilon
-                    epsilon = max(epsilon * self._hyper_params.epsilon_decay, self._hyper_params.epsilon_min)
-
                     # Choose an action and perform a step from the current state
                     curr_state = self._env.current_state
                     action = self.choose_action(epsilon)
                     new_state, cost = self._env.step(action, display=display)
+                    reached_goal = self._env.is_goal(new_state)
 
-                    running_cost += gamma * cost
+                    # Decay the epsilon and gamma
+                    epsilon = max(epsilon * self._hyper_params.epsilon_decay, self._hyper_params.epsilon_min)
                     gamma = gamma * self._hyper_params.discount
+
+                    # Compute running cost of the episode
+                    running_cost += gamma * cost
 
                     # Store the experience in the experience-replay buffer
                     self._exp_buffer.append(
-                        DQNet.Experience(curr_state.to_np(), action, new_state.to_np(), cost, new_state.is_goal())
+                        DQNet.Experience(curr_state, action, new_state, cost, reached_goal)
                     )
 
                     # Perform a training step (if the experience buffer has enough elements)
@@ -221,8 +199,7 @@ class DQNet:
                         self._q_target.set_weights(self._q_network.get_weights())
 
                     # End the episode if reached the goal
-                    if new_state.is_goal():
-                        reached_goal = True
+                    if reached_goal:
                         break
 
                 if reached_goal:
@@ -258,8 +235,8 @@ class DQNet:
         if self._rng.uniform() < epsilon:
             action = self._rng.integers(0, self._env.num_controls)
         else:
-            np_state = self._env.current_state.to_np().reshape((1, -1))  # Reshape into a batch of 1 state
-            action = int(np.argmin(self._q_network(np_state)[0]))
+            curr_state = self._env.current_state.reshape((1, -1))  # Reshape into a batch of 1 state
+            action = int(np.argmin(self._q_network(curr_state)[0]))
         return action
 
     def training_step(self) -> float:
@@ -274,12 +251,12 @@ class DQNet:
 
         with tf.GradientTape() as tape:
             # Sample experiences, unpack them, and convert them into tensors
-            curr_states, actions, next_states, costs, goals = self._exp_buffer.sample(self._hyper_params.batch_size)
-            curr_states = NumpyUtils.np_2_tf(curr_states)
-            actions = NumpyUtils.np_2_tf(actions)
-            next_states = NumpyUtils.np_2_tf(next_states)
-            costs = NumpyUtils.np_2_tf(costs)
-            goals = NumpyUtils.np_2_tf(tf.squeeze(goals))
+            experiences = self._exp_buffer.sample(self._hyper_params.batch_size)
+            curr_states = NumpyUtils.np_2_tf([exp.curr_state for exp in experiences])
+            actions = NumpyUtils.np_2_tf([exp.action for exp in experiences])
+            next_states = NumpyUtils.np_2_tf([exp.next_state for exp in experiences])
+            costs = NumpyUtils.np_2_tf([exp.cost for exp in experiences])
+            goals = NumpyUtils.np_2_tf([exp.is_goal for exp in experiences])
 
             # Compute target values
             # The target network is not to be trained

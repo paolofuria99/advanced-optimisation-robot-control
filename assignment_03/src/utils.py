@@ -6,7 +6,7 @@ import numpy as np
 class NumpyUtils:
 
     @staticmethod
-    def np_2_tf(array: npt.NDArray) -> tf.Tensor:
+    def np_2_tf(array: npt.ArrayLike) -> tf.Tensor:
         """ Convert from numpy to tensorflow. """
         return tf.convert_to_tensor(array)
 
