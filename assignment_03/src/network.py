@@ -33,9 +33,8 @@ class Network:
         state_out1 = tf.keras.layers.Dense(16, activation="relu", kernel_initializer="variance_scaling")(inputs)
         state_out2 = tf.keras.layers.Dense(32, activation="relu", kernel_initializer="variance_scaling")(state_out1)
         state_out3 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out2)
-        state_out4 = tf.keras.layers.Dense(128, activation="relu", kernel_initializer="variance_scaling")(state_out3)
-        state_out5 = tf.keras.layers.Dense(128, activation="relu", kernel_initializer="variance_scaling")(state_out4)
-        outputs = tf.keras.layers.Dense(output_size)(state_out5)
+        state_out4 = tf.keras.layers.Dense(64, activation="relu", kernel_initializer="variance_scaling")(state_out3)
+        outputs = tf.keras.layers.Dense(output_size)(state_out4)
 
         return tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
 
@@ -270,7 +269,7 @@ class DQNet:
         Returns:
             The loss value.
         """
-        loss_function = tf.keras.losses.MeanSquaredError()
+        loss_function = tf.keras.losses.MeanAbsoluteError()
         optimizer = tf.keras.optimizers.Adam(self._hyper_params.learning_rate)
 
         with tf.GradientTape() as tape:

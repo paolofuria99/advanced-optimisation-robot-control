@@ -15,13 +15,13 @@ def main():
         epsilon_start=1.,
         epsilon_decay=0.99,
         epsilon_min=0.01,
-        batch_size=128,
+        batch_size=32,
         learning_rate=0.001,
-        display_every_episodes=101
+        display_every_episodes=10
     )
 
     num_joints = 1
-    num_controls = 64
+    num_controls = 11
     name = "single"
 
     rng = random.default_rng(seed=42)

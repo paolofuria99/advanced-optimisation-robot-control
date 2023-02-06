@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     model = tf.keras.models.load_model(model_path + model_name)
 
-    num_controls = 64
+    num_controls = 11
     environment = SinglePendulum(num_controls=num_controls)
 
     environment.render_greedy_policy(model)
