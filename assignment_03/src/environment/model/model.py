@@ -151,16 +151,16 @@ class Pendulum:
     ):
         """
         Dynamic function: state, control -> next_state.
-        Put the result in x (the initial value is destroyed).
-        Also compute the cost of taking this step.
 
         Args:
             state: an array of the state (1D, first N elements for joint angles,
                then N elements for joint velocities
             control: an array of the control to apply (1D, N elements, one for each joint)
+
+        Returns:
+            the next state.
         """
 
-        cost = 0.
         q = NumpyUtils.modulo_pi(state[:self.joint_angles_size])
         v = state[self.joint_angles_size:]
         u = np.clip(np.reshape(np.array(control), self.control_size), -self._max_torque, self._max_torque)
@@ -170,16 +170,14 @@ class Pendulum:
             pin.computeAllTerms(self._model, self._data, q, v)
             M = self._data.M
             b = self._data.nle
-            a = inv(M) @ (u - self._friction_coefficient * v - b)  # use dot product, needed when joints > 1
+            a = inv(M) * (u - self._friction_coefficient * v - b)
             a = a.reshape(self.joint_velocities_size) + np.random.randn(self.joint_velocities_size) * self._noise_std
 
             q += (v + 0.5 * DT * a) * DT
             v += a * DT
 
-            # Cost function
-            cost += (NumpyUtils.sum_square(q) + 1e-1 * NumpyUtils.sum_square(v) + 1e-3 * NumpyUtils.sum_square(u)) * DT
+        new_state = np.empty(self.joint_angles_size+self.joint_velocities_size)
+        new_state[:self.joint_angles_size] = NumpyUtils.modulo_pi(q)
+        new_state[self.joint_angles_size:] = np.clip(v, -self._max_vel, self._max_vel)
 
-        state[:self.joint_angles_size] = NumpyUtils.modulo_pi(q)
-        state[self.joint_angles_size:] = np.clip(v, -self._max_vel, self._max_vel)
-
-        return state, cost
+        return new_state
