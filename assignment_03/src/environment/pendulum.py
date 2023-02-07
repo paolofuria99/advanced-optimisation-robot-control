@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.model.model as model
 import tensorflow as tf
+from environment.utils import NumpyUtils
 
 
 class Pendulum(ABC):
@@ -124,9 +125,18 @@ class Pendulum(ABC):
 
         return self.current_state, cost, goal_reached
 
-    @staticmethod
-    def _cost_function(new_state: npt.NDArray, torque: npt.NDArray) -> float:
-        return 1.0
+    def _cost_function(self, new_state: npt.NDArray, torque: npt.NDArray) -> float:
+        five_deg = 5*np.pi/180
+
+        angle = new_state[:self._num_joints]
+        velocity = new_state[self._num_joints:]
+
+        if abs(angle) >= five_deg:
+            cost = 100 * NumpyUtils.sum_square(angle) + 10 * NumpyUtils.sum_square(velocity) + 1e-3 * NumpyUtils.sum_square(torque)
+        else:
+            cost = 10 * NumpyUtils.sum_square(angle) + NumpyUtils.sum_square(velocity) + NumpyUtils.sum_square(torque)
+
+        return cost
 
     def render(self):
         """
