@@ -126,17 +126,13 @@ class Pendulum(ABC):
         return self.current_state, cost, goal_reached
 
     def _cost_function(self, new_state: npt.NDArray, torque: npt.NDArray) -> float:
-        five_deg = 5*np.pi/180
-
         angle = new_state[:self._num_joints]
         velocity = new_state[self._num_joints:]
 
-        if abs(angle) >= five_deg:
-            cost = 100 * NumpyUtils.sum_square(angle) + 10 * NumpyUtils.sum_square(velocity) + 1e-3 * NumpyUtils.sum_square(torque)
-        else:
-            cost = 10 * NumpyUtils.sum_square(angle) + NumpyUtils.sum_square(velocity) + NumpyUtils.sum_square(torque)
-
-        return cost
+        return \
+            NumpyUtils.sum_square(angle) \
+            + 1e-1 * NumpyUtils.sum_square(velocity) \
+            + 1e-3 * NumpyUtils.sum_square(torque)
 
     def render(self):
         """
