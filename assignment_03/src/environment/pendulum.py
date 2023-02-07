@@ -51,7 +51,7 @@ class Pendulum(ABC):
         self._rng = rng
 
         # Needed for converting torque from discrete to continuous
-        self._dis_res_torque = 2 * max_torque / (num_controls - 1)
+        self._dis_res_torque = 2 * max_torque / num_controls
 
         # Randomly initialize current state
         self._current_state = self._random_state()
@@ -92,12 +92,12 @@ class Pendulum(ABC):
         if state is None:
             self._current_state = self._random_state()
         else:
-            self._current_state = np.array(state)
+            self._current_state = np.copy(state)
 
         if display:
             self.render()
 
-        return self.current_state
+        return self._current_state
 
     def step(self, torque_idx: int, display: bool = False) -> Tuple[npt.NDArray, float, bool]:
         """
@@ -123,7 +123,7 @@ class Pendulum(ABC):
         if display:
             self.render()
 
-        return self.current_state, cost, goal_reached
+        return self._current_state, cost, goal_reached
 
     def _cost_function(self, new_state: npt.NDArray, torque: npt.NDArray) -> float:
         angle = new_state[:self._num_joints]
@@ -148,13 +148,13 @@ class Pendulum(ABC):
         Args:
             q_network: the Deep Q Network model to compute the Q function.
         """
-        curr_state = self.reset(display=True)
+        curr_state = self.reset([-np.pi, 0.0], display=True)
 
         while not self._is_goal(curr_state):
             curr_state_t = tf.convert_to_tensor(curr_state)
-            curr_state_t = tf.expand_dims(curr_state_t)
+            curr_state_t = tf.expand_dims(curr_state_t, axis=0)
             q_values = tf.squeeze(q_network(curr_state_t, training=False))
-            action = int(tf.argmax(q_values))
+            action = int(tf.argmin(q_values))
             curr_state, _, _ = self.step(action, display=True)
 
     def _random_state(self) -> npt.NDArray:
