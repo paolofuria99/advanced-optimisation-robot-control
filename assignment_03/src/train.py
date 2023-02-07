@@ -47,10 +47,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("type", required=True, help="the type of pendulum to use", type=str, choices=possible_types)
-    parser.add_argument("name", required=True, help="the name of the experiment", type=str)
-    parser.add_argument("controls", required=False, help="how many controls to use", type=int, default=11)
-    parser.add_argument("seed", required=False, help="the rng seed", type=int)
+    parser.add_argument("--type", required=True, help="the type of pendulum to use", type=str, choices=possible_types)
+    parser.add_argument("--name", required=True, help="the name of the experiment", type=str)
+    parser.add_argument("--controls", required=False, help="how many controls to use", type=int, default=11)
+    parser.add_argument("--seed", required=False, help="the rng seed", type=int)
 
     args = parser.parse_args()
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
         replay_size=10000,
         replay_start=32,
         discount=0.99,
-        max_episodes=1,
+        max_episodes=200,
         max_steps_per_episode=500,
         steps_for_target_update=1000,
         epsilon_start=1.0,
