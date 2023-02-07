@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import time
+from datetime import datetime
 from typing import NamedTuple, Tuple
 
 import numpy as np
@@ -56,11 +56,20 @@ class DQL:
         # Prepare the experience replay buffer
         self._exp_buffer = ExperienceBuffer(self._hyper_params.replay_size, self._rng)
 
-        # For saving and logging purposes
+        # Folder for saving and logging purposes
         self._model_folder = f"{self.save_folder}/{name}"
         if os.path.exists(self._model_folder):
-            shutil.rmtree(self._model_folder)
+            # Create a sub-folder to avoid deleting precious files by mistake
+            curr_time = datetime.now().strftime("%H%M%S")
+            self._model_folder += f"/{curr_time}"
         os.mkdir(self._model_folder)
+
+        # Log parameters
+        self.save_params()
+
+    @property
+    def model_folder(self) -> str:
+        return self._model_folder
 
     def train(self) -> tf.keras.Model:
         """
@@ -160,9 +169,9 @@ class DQL:
             print(f"\t Cost to go: {episode_cost_to_go}")
             print(f"\t Elapsed seconds: {episode_time}")
 
-            if ((episode + 1) % 1) == 0:
+            if ((episode + 1) % 10) == 0:
                 best_model = tf.keras.models.clone_model(self._q_network)
-                self.save(episode+1)
+                self.save_best_weights(episode + 1)
 
         self.save_costs_and_avg_time(
             np.array(episodes_costs),
@@ -242,13 +251,12 @@ class DQL:
         # Return mean batch loss
         return loss / len(start_states)
 
-    def save(self, episode: int) -> None:
+    def save_params(self) -> None:
         model = self._q_network
 
         params = {
             "input_size": model.input_shape[1],
             "output_size": model.output_shape[1],
-            "name": self._name,
             "time_step": self._env.time_step,
             "max_vel": self._env.max_vel,
             "max_torque": self._env.max_torque
@@ -262,8 +270,13 @@ class DQL:
         with open(f"{self._model_folder}/hyper.json", "w") as file:
             json.dump(self._hyper_params._asdict(), file)
 
-        # Save weights
-        model.save_weights(f"{self._model_folder}/weights_{episode}.h5")
+    def save_best_weights(self, episode: int) -> None:
+        # Find previous best weights and delete them if present
+        weights = [item for item in os.listdir(self._model_folder) if item.startswith("weights_")]
+        if len(weights) != 0:
+            os.remove(f"{self._model_folder}/{weights[0]}")
+        # Save new best weights
+        self._q_network.save_weights(f"{self._model_folder}/weights_{episode}.h5")
 
     def save_costs_and_avg_time(self, episodes_costs: npt.NDArray, avg_time: float) -> None:
         with open(f"{self._model_folder}/avg_time.json", "w") as file:
