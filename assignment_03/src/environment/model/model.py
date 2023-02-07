@@ -3,7 +3,7 @@ import numpy.typing as npt
 import pinocchio as pin
 from numpy.linalg import inv
 from orc.assignment_03.src.environment.model.display import Display
-from orc.assignment_03.src.utils import NumpyUtils
+from environment.utils import NumpyUtils
 
 
 class Visual:

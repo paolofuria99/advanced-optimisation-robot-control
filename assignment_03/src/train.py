@@ -1,5 +1,5 @@
 import orc.assignment_03.src.environment.pendulum as environment
-from orc.assignment_03.src.network import DQNet, Network
+from dqn.algorithm import DQNet, Network
 
 import numpy.random as random
 

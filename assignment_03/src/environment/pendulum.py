@@ -2,65 +2,12 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import Union, Tuple
+from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.model.model as model
 import tensorflow as tf
-from orc.assignment_03.src.utils import NumpyUtils
-
-
-class State:
-    """
-    A class that describes the state of a pendulum, in terms of:
-        * Joint position
-        * Joint velocity
-    Both of them are arrays, which size is the number of joints of the pendulum.
-    """
-
-    def __init__(
-            self,
-            num_joints,
-            max_vel,
-            position: Union[npt.NDArray, None] = None,
-            velocity: Union[npt.NDArray, None] = None,
-            rng: np.random.Generator = np.random.default_rng()
-    ):
-        self._rng = rng
-        self._num_joints = num_joints
-        self._max_vel = max_vel
-        self._position = position if position is not None else self._get_random_position()
-        self._velocity = velocity if velocity is not None else self._get_random_velocity()
-
-    @property
-    def position(self):
-        return self._position
-
-    @property
-    def velocity(self):
-        return self._velocity
-
-    def set(self, position: npt.NDArray, velocity: npt.NDArray) -> None:
-        self._position = position
-        self._velocity = velocity
-
-    def random(self):
-        self._position = self._get_random_position()
-        self._velocity = self._get_random_velocity()
-
-    def is_goal(self) -> bool:
-        return (self._position == np.zeros(self._num_joints)).all() \
-               and (self._velocity == np.zeros(self._num_joints)).all()
-
-    def to_np(self) -> npt.NDArray:
-        return np.concatenate((self._position, self._velocity))
-
-    def _get_random_position(self) -> npt.ArrayLike:
-        return self._rng.uniform(-np.pi, np.pi, self._num_joints)
-
-    def _get_random_velocity(self) -> npt.ArrayLike:
-        return self._rng.uniform(-self._max_vel, self._max_vel, self._num_joints)
 
 
 class Pendulum(ABC):
@@ -75,9 +22,7 @@ class Pendulum(ABC):
     def __init__(
             self,
             num_joints: int,
-            noise_std: float = 0,
             time_step: float = 0.05,
-            num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
             max_torque: float = 5,
@@ -88,35 +33,38 @@ class Pendulum(ABC):
 
         Args:
             num_joints: the number of joints of the pendulum.
-            noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
             time_step: the length, in seconds, of a time step.
-            num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
             rng: a random number generator. A default one is used if not specified.
         """
         # Initialize a pendulum model
-        self._pendulum = model.Pendulum(num_joints, max_vel, max_torque, noise_std, time_step, num_euler_steps)
+        self._model = model.Pendulum(num_joints, max_vel, max_torque, time_step=time_step)
 
         # Setup attributes
         self._num_joints = num_joints
         self._time_step = time_step
         self._num_controls = num_controls
         self._max_vel = max_vel
-        self._max_torque = max_torque
-        self._dis_res_torque = 2 * max_torque / num_controls  # Discretization resolution for joint torque
         self._rng = rng
 
+        # Needed for converting torque from discrete to continuous
+        self._dis_res_torque = 2 * max_torque / (num_controls - 1)
+
         # Randomly initialize current state
-        self.current_state = State(num_joints, max_vel, rng=rng)
+        self._current_state = self._random_state()
 
     @property
     def num_controls(self):
         return self._num_controls
 
+    @property
+    def current_state(self):
+        return self._current_state
+
     @abstractmethod
-    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+    def _d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
         """
         Convert a discretized torque into a continuous vector.
 
@@ -128,7 +76,7 @@ class Pendulum(ABC):
         """
         pass
 
-    def reset(self, state: State = None, display: bool = False) -> State:
+    def reset(self, state: npt.ArrayLike = None, display: bool = False) -> npt.NDArray:
         """
         Reset the environment, either to a provided state or a random one.
 
@@ -141,16 +89,16 @@ class Pendulum(ABC):
             the new state of the environment.
         """
         if state is None:
-            self.current_state.random()
+            self._current_state = self._random_state()
         else:
-            self.current_state.set(state.position, state.velocity)
+            self._current_state = np.array(state)
 
         if display:
             self.render()
 
         return self.current_state
 
-    def step(self, torque_idx: int, display: bool = False) -> Tuple[State, float]:
+    def step(self, torque_idx: int, display: bool = False) -> Tuple[npt.NDArray, float, bool]:
         """
         Perform a step by applying the given control input.
 
@@ -159,39 +107,33 @@ class Pendulum(ABC):
             display: whether to display on Gepetto Viewer.
 
         Returns:
-            The new state, and the cost of applying the control input.
+            The new state, the cost of the step, and whether the goal was reached.
         """
-        self.current_state, cost = self.dynamics(torque_idx)
+        continuous_torque = self._d2c_torque(torque_idx)
+
+        curr_state = self._current_state
+        new_state = self._model.dynamics(curr_state, continuous_torque)
+        goal_reached = self._is_goal(new_state)
+
+        cost = self._cost_function(new_state, continuous_torque)
+
+        self._current_state = new_state
 
         if display:
             self.render()
 
-        return self.current_state, cost
+        return self.current_state, cost, goal_reached
+
+    @staticmethod
+    def _cost_function(new_state: npt.NDArray, torque: npt.NDArray) -> float:
+        return 1.0
 
     def render(self):
         """
         Display the pendulum in the current state.
         """
-        self._pendulum.display(self.current_state.position)
+        self._model.display(self.current_state[:self._num_joints])
         time.sleep(self._time_step)
-
-    def dynamics(self, torque_idx: int) -> Tuple[State, float]:
-        """
-        Apply a discretized control input to the dynamics of the pendulum,
-        to get the new state and the cost of applying the control.
-
-        Args:
-            torque_idx: the discretized control input (between 0 and control_size-1).
-
-        Returns:
-            The new state and the cost of applying the control.
-        """
-        torque = self.d2c_torque(torque_idx)
-        new_state, cost = self._pendulum.dynamics(self.current_state.to_np(), torque)
-
-        self.current_state.set(new_state[:self._num_joints], new_state[self._num_joints:])
-
-        return self.current_state, cost
 
     def render_greedy_policy(self, q_network: tf.keras.Model) -> None:
         """
@@ -202,49 +144,28 @@ class Pendulum(ABC):
         """
         curr_state = self.reset(display=True)
 
-        while not curr_state.is_goal():
-            curr_state = NumpyUtils.np_2_tf(curr_state.to_np().reshape(1, -1))
-            q_values = tf.squeeze(q_network(curr_state))
+        while not self._is_goal(curr_state):
+            curr_state_t = tf.convert_to_tensor(curr_state)
+            curr_state_t = tf.expand_dims(curr_state_t)
+            q_values = tf.squeeze(q_network(curr_state_t, training=False))
             action = int(tf.argmax(q_values))
-            curr_state, _ = self.step(action, display=True)
+            curr_state, _, _ = self.step(action, display=True)
+
+    def _random_state(self) -> npt.NDArray:
+        position = self._rng.uniform(-np.pi, np.pi, self._num_joints)
+        velocity = self._rng.uniform(-self._max_vel, self._max_vel, self._num_joints)
+        return np.concatenate((position, velocity))
 
     @staticmethod
-    def plot_V_table(v_table: np.typing.NDArray) -> None:
-        """
-        Plot the given value table.
-
-        Args:
-            v_table: the value table to plot.
-        """
-        pass
-
-    @staticmethod
-    def plot_policy(policy_table: np.typing.NDArray):
-        """
-        Plot the given policy table.
-
-        Args:
-            policy_table: the policy table to plot.
-        """
-        pass
-
-    @staticmethod
-    def plot_Q_table(q_table: np.typing.NDArray):
-        """
-        Plot the given Q table
-        Args:
-            q_table: the Q table to plot
-        """
-        pass
+    def _is_goal(state: npt.NDArray) -> bool:
+        return (state == 0.0).all()
 
 
 class SinglePendulum(Pendulum):
 
     def __init__(
             self,
-            noise_std: float = 0,
             time_step: float = 0.05,
-            num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
             max_torque: float = 5,
@@ -254,19 +175,17 @@ class SinglePendulum(Pendulum):
         Initialize the single pendulum environment.
 
         Args:
-            noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
             time_step: the length, in seconds, of a time step.
-            num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
             rng: a random number generator. A default one is used if not specified.
         """
         super(SinglePendulum, self).__init__(
-            1, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque, rng
+            1, time_step, num_controls, max_vel, max_torque, rng
         )
 
-    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+    def _d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
         """
         Convert a discretized torque into a continuous vector.
 
@@ -285,9 +204,7 @@ class DoublePendulumUnderact(Pendulum):
 
     def __init__(
             self,
-            noise_std: float = 0,
             time_step: float = 0.05,
-            num_euler_steps: int = 1,
             num_controls: int = 11,
             max_vel: float = 5,
             max_torque: float = 5,
@@ -297,19 +214,17 @@ class DoublePendulumUnderact(Pendulum):
         Initialize the underactuated double pendulum environment.
 
         Args:
-            noise_std: the standard deviation of the gaussian noise injected into the pendulum dynamics.
             time_step: the length, in seconds, of a time step.
-            num_euler_steps: the number of Euler steps per integration for the pendulum dynamics.
             num_controls: the number of discretization steps for joint torque.
             max_vel = maximum value for joint velocity (vel in [-max_vel, max_vel]).
             max_torque: maximum value for joint torque (torque in [-max_torque, max_torque]).
             rng: a random number generator. A default one is used if not specified.
         """
         super(DoublePendulumUnderact, self).__init__(
-            2, noise_std, time_step, num_euler_steps, num_controls, max_vel, max_torque, rng
+            2, time_step, num_controls, max_vel, max_torque, rng
         )
 
-    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+    def _d2c_torque(self, torque_idx: int) -> npt.NDArray:
         """
         Convert a discretized torque into a continuous vector.
         The torque for the second joint is set to 0 for underactuation.
