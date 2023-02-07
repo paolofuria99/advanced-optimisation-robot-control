@@ -51,7 +51,7 @@ class Pendulum(ABC):
         self._rng = rng
 
         # Needed for converting torque from discrete to continuous
-        self._dis_res_torque = 2 * max_torque / num_controls
+        self._dis_res_torque = 2 * max_torque / (num_controls - 1)
 
         # Randomly initialize current state
         self._current_state = self._random_state()
