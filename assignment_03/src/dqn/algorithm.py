@@ -180,7 +180,7 @@ class DQL:
             q_values_start_states = self._q_network(start_states_tf, training=True)
             # We make a 2D matrix of indices to index the Q-value corresponding
             # to each experience's performed action
-            row_indices = tf.range(tf.shape(actions)[0], dtype=actions.dtype)
+            row_indices = tf.range(tf.shape(actions_tf)[0], dtype=actions_tf.dtype)
             full_indices = tf.stack([row_indices, actions_tf], axis=1)
             actual_state_action_value = tf.gather_nd(
                 q_values_start_states,
