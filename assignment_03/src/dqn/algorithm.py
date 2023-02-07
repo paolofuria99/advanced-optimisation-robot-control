@@ -84,6 +84,8 @@ class DQL:
             # Run each episode for a maximum number of steps (or until the state is terminal)
             for step in range(self._hyper_params.max_steps_per_episode):
 
+                total_steps += 1
+
                 # Decay the epsilon
                 epsilon = max(epsilon * self._hyper_params.epsilon_decay, self._hyper_params.epsilon_min)
 
@@ -100,11 +102,11 @@ class DQL:
                 )
 
                 # Perform a training step if enough steps have been performed
-                if ((total_steps + 1) % self._hyper_params.replay_start) == 0:
+                if total_steps % self._hyper_params.replay_start == 0:
                     self.training_step()
 
                 # Copy weights to target network every certain number of steps
-                if ((total_steps + 1) % self._hyper_params.steps_for_target_update) == 0:
+                if total_steps % self._hyper_params.steps_for_target_update == 0:
                     print(f"\t Copying weights to target network.")
                     self._q_target.set_weights(self._q_network.get_weights())
 
