@@ -28,7 +28,7 @@ def main(
     if pend_type == pend_type.SINGLE:
         num_joints = 1
 
-        env = environment.SinglePendulum(rng=rng)
+        env = environment.SinglePendulum(max_vel=8.0, max_torque=2.0, rng=rng)
         model = Network.get_model(num_joints * 2, num_controls, name)
 
         dql = DQL(model, hyper_params, env, rng=rng)
@@ -56,13 +56,13 @@ if __name__ == "__main__":
 
     hp = DQL.HyperParams(
         replay_size=10000,
-        replay_start=32,
+        replay_start=2500,
         discount=0.99,
         max_episodes=200,
         max_steps_per_episode=500,
         steps_for_target_update=1000,
         epsilon_start=1.0,
-        epsilon_decay=0.9985,
+        epsilon_decay=0.985,
         epsilon_min=0.002,
         batch_size=32,
         learning_rate=0.001,

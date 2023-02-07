@@ -161,9 +161,9 @@ class Pendulum:
             the next state.
         """
 
-        q = NumpyUtils.modulo_pi(state[:self.joint_angles_size])
-        v = state[self.joint_angles_size:]
-        u = np.clip(np.reshape(np.array(control), self.control_size), -self._max_torque, self._max_torque)
+        q = NumpyUtils.modulo_pi(np.copy(state[:self.joint_angles_size]))
+        v = np.copy(state[self.joint_angles_size:])
+        u = np.clip(np.reshape(np.copy(control), self.control_size), -self._max_torque, self._max_torque)
 
         DT = self._time_step / self._num_euler_steps
         for i in range(self._num_euler_steps):
