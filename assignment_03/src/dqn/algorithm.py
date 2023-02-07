@@ -1,16 +1,24 @@
 from __future__ import annotations
 
-from typing import NamedTuple
+import json
+import os
+import shutil
+import time
+from typing import NamedTuple, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import orc.assignment_03.src.environment.pendulum as environment
 import tensorflow as tf
 from orc.assignment_03.src.dqn.experience import Experience, ExperienceBuffer
+from orc.assignment_03.src.dqn.network import Network
 from tensorflow.python.ops.numpy_ops import np_config
 
 
 class DQL:
+    # Folder to save data
+    save_folder = "models"
+
     class HyperParams(NamedTuple):
         """
         This class describes the various hyperparameters needed in a Deep-Q-Network setting.
@@ -30,11 +38,13 @@ class DQL:
 
     def __init__(
             self,
+            name: str,
             network_model: tf.keras.Model,
             hyper_params: HyperParams,
             env: environment.Pendulum,
             rng: np.random.Generator = np.random.default_rng()
     ) -> None:
+        self._name = name
         self._q_network = tf.keras.models.clone_model(network_model)
         self._q_target = tf.keras.models.clone_model(network_model)
         self._hyper_params = hyper_params
@@ -46,12 +56,18 @@ class DQL:
         # Prepare the experience replay buffer
         self._exp_buffer = ExperienceBuffer(self._hyper_params.replay_size, self._rng)
 
+        # For saving and logging purposes
+        self._model_folder = f"{self.save_folder}/{name}"
+        if os.path.exists(self._model_folder):
+            shutil.rmtree(self._model_folder)
+        os.mkdir(self._model_folder)
+
     def train(self) -> tf.keras.Model:
         """
         Train the Q-network.
 
         Returns:
-            The best performing Q-network.
+            The Q-network from the last episode. The best model is saved separately..
         """
         np_config.enable_numpy_behavior()
 
@@ -63,6 +79,10 @@ class DQL:
 
         # Keep track of the total number of steps (regardless of the episode)
         total_steps = 0
+
+        # Keep track of average episode time and costs of each episode
+        episodes_time = []
+        episodes_costs = []
 
         # Run training for a maximum number of episodes
         for episode in range(self._hyper_params.max_episodes):
@@ -76,10 +96,12 @@ class DQL:
 
             # Initialize variables to keep track of progress
             goal_reached = False
-            episode_cost = 0.0
+            episode_costs = []
 
             # Set the environment to a random state
             self._env.reset(display=display)
+
+            start_time = time.time()
 
             # Run each episode for a maximum number of steps (or until the state is terminal)
             for step in range(self._hyper_params.max_steps_per_episode):
@@ -94,7 +116,7 @@ class DQL:
                 action = self.choose_action(curr_state, epsilon)
                 new_state, cost, goal_reached = self._env.step(action, display=display)
 
-                episode_cost += cost
+                episode_costs.append(cost)
 
                 # Store the experience in the experience-replay buffer
                 self._exp_buffer.append(
@@ -114,18 +136,40 @@ class DQL:
                 if goal_reached:
                     break
 
+            end_time = time.time()
+
+            # Compute elapsed time and keep track of it
+            episode_time = end_time - start_time
+            episodes_time.append(episode_time)
+
+            # Keep track of episode costs
+            episodes_costs.append(episode_costs)
+
+            # Compute cost to go
+            discounted_episode_costs = [
+                cost * (self._hyper_params.discount**idx) for idx, cost in enumerate(episode_costs)
+            ]
+            episode_cost_to_go = float(np.sum(discounted_episode_costs))
+
+            # Print some info
             if goal_reached:
                 print("\t Reached goal!")
             else:
                 print("\t Did not reach goal...")
             print(f"\t Epsilon: {epsilon}")
-            print(f"\t Episode cost: {episode_cost}")
+            print(f"\t Cost to go: {episode_cost_to_go}")
+            print(f"\t Elapsed seconds: {episode_time}")
 
-            if ((episode + 1) % 30) == 0:
+            if ((episode + 1) % 1) == 0:
                 best_model = tf.keras.models.clone_model(self._q_network)
-                best_model.save_weights(f"models/train/{episode + 1}.h5")
+                self.save(episode+1)
 
-        return best_model
+        self.save_costs_and_avg_time(
+            np.array(episodes_costs),
+            float(np.mean(episodes_time))
+        )
+
+        return tf.keras.models.clone_model(self._q_network)
 
     def choose_action(self, state: npt.NDArray, epsilon: float) -> int:
         """
@@ -197,3 +241,55 @@ class DQL:
 
         # Return mean batch loss
         return loss / len(start_states)
+
+    def save(self, episode: int) -> None:
+        model = self._q_network
+
+        params = {
+            "input_size": model.input_shape[1],
+            "output_size": model.output_shape[1],
+            "name": self._name,
+            "time_step": self._env.time_step,
+            "max_vel": self._env.max_vel,
+            "max_torque": self._env.max_torque
+        }
+
+        # Save parameters
+        with open(f"{self._model_folder}/params.json", "w") as file:
+            json.dump(params, file)
+
+        # Save hyper parameters
+        with open(f"{self._model_folder}/hyper.json", "w") as file:
+            json.dump(self._hyper_params._asdict(), file)
+
+        # Save weights
+        model.save_weights(f"{self._model_folder}/weights_{episode}.h5")
+
+    def save_costs_and_avg_time(self, episodes_costs: npt.NDArray, avg_time: float) -> None:
+        with open(f"{self._model_folder}/avg_time.json", "w") as file:
+            json.dump(avg_time, file)
+
+        np.save(f"{self._model_folder}/costs.npy", episodes_costs)
+
+    @classmethod
+    def load(cls, name: str) -> Tuple[tf.keras.Model, environment.Pendulum]:
+
+        model_folder = f"{cls.save_folder}/{name}"
+        with open(f"{model_folder}/params.json", "r") as file:
+            params = json.load(file)
+
+        model = Network.get_model(params["input_size"], params["output_size"])
+        weights = [item for item in os.listdir(model_folder) if item.startswith("weights_")][0]
+        model.load_weights(f"{model_folder}/{weights}")
+
+        single = params["input_size"] == 2
+        if single:
+            env = environment.SinglePendulum(
+                params["time_step"], params["output_size"], params["max_vel"], params["max_torque"]
+            )
+        else:
+            env = environment.DoublePendulumUnderact(
+                params["time_step"], params["output_size"], params["max_vel"], params["max_torque"]
+            )
+
+        return model, env

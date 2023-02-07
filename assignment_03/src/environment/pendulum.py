@@ -48,6 +48,7 @@ class Pendulum(ABC):
         self._time_step = time_step
         self._num_controls = num_controls
         self._max_vel = max_vel
+        self._max_torque = max_torque
         self._rng = rng
 
         # Needed for converting torque from discrete to continuous
@@ -59,6 +60,18 @@ class Pendulum(ABC):
     @property
     def num_controls(self):
         return self._num_controls
+
+    @property
+    def time_step(self):
+        return self._time_step
+
+    @property
+    def max_vel(self):
+        return self._max_vel
+
+    @property
+    def max_torque(self):
+        return self._max_torque
 
     @property
     def current_state(self):

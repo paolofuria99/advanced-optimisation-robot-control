@@ -1,14 +1,29 @@
-import tensorflow as tf
+import argparse
+import os
 
-from orc.assignment_03.src.environment.pendulum import SinglePendulum
+from dqn.algorithm import DQL
+
+
+def main(name: str) -> None:
+    network, env = DQL.load(name)
+    env.render_greedy_policy(network)
+
 
 if __name__ == "__main__":
-    model_path = "models/"
-    model_name = "single"
+    parser = argparse.ArgumentParser()
 
-    model = tf.keras.models.load_model(model_path + model_name)
+    parser.add_argument("model_name", help="the name of the model to evaluate", type=str)
 
-    num_controls = 11
-    environment = SinglePendulum(num_controls=num_controls)
+    args = parser.parse_args()
 
-    environment.render_greedy_policy(model)
+    models_folder = "models/"
+    possible_names = [
+        item for item in os.listdir(models_folder)
+        if os.path.isdir(os.path.join(models_folder, item)) and not item.startswith(".")
+    ]
+
+    if args.model_name not in possible_names:
+        print("No model with that name.")
+        exit(1)
+
+    main(args.model_name)

@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 from enum import Enum
 
 import numpy.random as random
@@ -21,25 +20,24 @@ def main(
         rng_seed: int = None
 ):
     if rng_seed is not None:
-        rng = random.default_rng(seed=42)
+        rng = random.default_rng()
     else:
         rng = random.default_rng()
 
     if pend_type == pend_type.SINGLE:
         num_joints = 1
 
-        env = environment.SinglePendulum(max_vel=8.0, max_torque=2.0, rng=rng)
-        model = Network.get_model(num_joints * 2, num_controls, name)
+        env = environment.SinglePendulum(max_vel=5.0, max_torque=5.0, rng=rng)
+        model = Network.get_model(num_joints * 2, num_controls)
 
-        dql = DQL(model, hyper_params, env, rng=rng)
+        dql = DQL(name, model, hyper_params, env, rng)
     else:
         print("Not supported")
         return
 
-    trained_model = dql.train()
+    last_model = dql.train()
 
-    time = datetime.now().strftime("%H%M%S")
-    trained_model.save_weights(f"models/{name}_{time}.h5")
+    last_model.save_weights(f"models/{name}/last_weights.h5")
 
 
 if __name__ == "__main__":
@@ -56,17 +54,17 @@ if __name__ == "__main__":
 
     hp = DQL.HyperParams(
         replay_size=10000,
-        replay_start=2500,
+        replay_start=400,
         discount=0.99,
-        max_episodes=200,
-        max_steps_per_episode=500,
-        steps_for_target_update=1000,
+        max_episodes=1,
+        max_steps_per_episode=200,
+        steps_for_target_update=400,
         epsilon_start=1.0,
-        epsilon_decay=0.985,
-        epsilon_min=0.002,
-        batch_size=32,
+        epsilon_decay=0.995,
+        epsilon_min=0.005,
+        batch_size=256,
         learning_rate=0.001,
-        display_every_episodes=10
+        display_every_episodes=5
     )
 
     main(
