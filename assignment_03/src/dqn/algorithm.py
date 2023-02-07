@@ -102,7 +102,7 @@ class DQL:
                 )
 
                 # Perform a training step if enough steps have been performed
-                if total_steps % self._hyper_params.replay_start == 0:
+                if total_steps >= self._hyper_params.replay_start:
                     self.training_step()
 
                 # Copy weights to target network every certain number of steps
@@ -170,11 +170,7 @@ class DQL:
             # Compute target values
             q_values_next_states = self._q_target(next_states_tf, training=False)
             min_q_values_next_states = tf.reduce_min(q_values_next_states, axis=1)
-            target_state_action_value = tf.where(
-                goals_tf,
-                costs_tf,
-                costs_tf + (self._hyper_params.discount * min_q_values_next_states)
-            )
+            target_state_action_value = costs_tf + (self._hyper_params.discount * min_q_values_next_states)
 
             # Compute actual values
             q_values_start_states = self._q_network(start_states_tf, training=True)
