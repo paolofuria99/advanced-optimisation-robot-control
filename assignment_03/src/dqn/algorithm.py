@@ -123,6 +123,7 @@ class DQL:
 
             if ((episode + 1) % 30) == 0:
                 best_model = tf.keras.models.clone_model(self._q_network)
+                best_model.save_weights(f"models/train/{episode + 1}.h5")
 
         return best_model
 
@@ -170,7 +171,11 @@ class DQL:
             # Compute target values
             q_values_next_states = self._q_target(next_states_tf, training=False)
             min_q_values_next_states = tf.reduce_min(q_values_next_states, axis=1)
-            target_state_action_value = costs_tf + (self._hyper_params.discount * min_q_values_next_states)
+            target_state_action_value = tf.where(
+                goals_tf,
+                costs_tf,
+                costs_tf + (self._hyper_params.discount * min_q_values_next_states)
+            )
 
             # Compute actual values
             q_values_start_states = self._q_network(start_states_tf, training=True)
