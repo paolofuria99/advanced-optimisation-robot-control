@@ -99,7 +99,7 @@ class DQL:
         cost_to_go_best_mean = np.inf
 
         # Run training for a maximum number of episodes
-        for episode in range(1, self._hyper_params.max_episodes):
+        for episode in range(1, self._hyper_params.max_episodes + 1):
 
             print("======================")
             print(f"EPISODE {episode}")
