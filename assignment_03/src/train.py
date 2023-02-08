@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--controls", required=False, help="how many controls to use", type=int, default=11)
     parser.add_argument(
-        "--time-step", required=False, help="length of simulation time step (seconds)", type=float, default=0.005
+        "--time-step", required=False, help="length of simulation time step (seconds)", type=float, default=0.05
     )
     parser.add_argument("--max-vel", required=False, help="the maximum velocity", type=float, default=5.0)
     parser.add_argument("--max-torque", required=False, help="the maximum torque", type=float, default=5.0)
