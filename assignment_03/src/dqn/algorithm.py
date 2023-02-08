@@ -99,14 +99,14 @@ class DQL:
         cost_to_go_best_mean = np.inf
 
         # Run training for a maximum number of episodes
-        for episode in range(self._hyper_params.max_episodes):
+        for episode in range(1, self._hyper_params.max_episodes):
 
             print("======================")
-            print(f"EPISODE {episode + 1}")
+            print(f"EPISODE {episode}")
             print("======================")
 
             # Flag to know if to display or not
-            display = ((episode + 1) % self._hyper_params.display_every_episodes) == 0
+            display = (episode % self._hyper_params.display_every_episodes) == 0
 
             # Initialize variables to keep track of progress
             goal_reached = False
@@ -168,8 +168,10 @@ class DQL:
 
             # Inserting the cost to go
             cost_to_go_all.append(episode_cost_to_go)
-            if episode > mean_every:
-                mean = np.mean(cost_to_go_all[episode-mean_every:episode])
+
+            # Save best model if the mean over the last episodes improved
+            if episode >= mean_every:
+                mean = np.mean(cost_to_go_all[episode - mean_every:episode])
                 if mean < cost_to_go_best_mean:
                     cost_to_go_best_mean = mean
                     self.save_best_weights(episode)
@@ -182,10 +184,6 @@ class DQL:
             print(f"\t Epsilon: {epsilon}")
             print(f"\t Cost to go: {episode_cost_to_go}")
             print(f"\t Elapsed seconds: {episode_time}")
-
-            if ((episode + 1) % 10) == 0:
-                best_model = tf.keras.models.clone_model(self._q_network)
-                self.save_best_weights(episode + 1)
 
         self.save_costs_and_avg_time(
             np.array(episodes_costs),
