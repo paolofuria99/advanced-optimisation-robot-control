@@ -93,6 +93,11 @@ class DQL:
         episodes_time = []
         episodes_costs = []
 
+        # cost_to_go mean every tot
+        cost_to_go_all = []
+        mean_every = 5
+        cost_to_go_best_mean = np.inf
+
         # Run training for a maximum number of episodes
         for episode in range(self._hyper_params.max_episodes):
 
@@ -110,6 +115,7 @@ class DQL:
             # Set the environment to a random state
             self._env.reset(display=display)
 
+            # Start calculating time for each episode
             start_time = time.time()
 
             # Run each episode for a maximum number of steps (or until the state is terminal)
@@ -159,6 +165,14 @@ class DQL:
                 cost * (self._hyper_params.discount**idx) for idx, cost in enumerate(episode_costs)
             ]
             episode_cost_to_go = float(np.sum(discounted_episode_costs))
+
+            # Inserting the cost to go
+            cost_to_go_all.append(episode_cost_to_go)
+            if episode > mean_every:
+                mean = np.mean(cost_to_go_all[episode-mean_every:episode])
+                if mean < cost_to_go_best_mean:
+                    cost_to_go_best_mean = mean
+                    self.save_best_weights(episode)
 
             # Print some info
             if goal_reached:
