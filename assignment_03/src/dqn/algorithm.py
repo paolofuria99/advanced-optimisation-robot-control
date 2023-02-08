@@ -91,6 +91,7 @@ class DQL:
         # Keep track of average episode time and costs of each episode
         episodes_time = []
         episodes_costs = []
+        episodes_losses = []
 
         # cost_to_go mean every tot
         cost_to_go_all = []
@@ -110,6 +111,7 @@ class DQL:
             # Initialize variables to keep track of progress
             goal_reached = False
             episode_costs = []
+            episode_losses = []
 
             # Set the environment to a random state
             self._env.reset(display=display)
@@ -139,7 +141,10 @@ class DQL:
 
                 # Perform a training step if enough steps have been performed
                 if total_steps >= self._hyper_params.replay_start:
-                    self.training_step()
+                    loss = self.training_step()
+                else:
+                    loss = 0.0
+                episode_losses.append(loss)
 
                 # Copy weights to target network every certain number of steps
                 if total_steps % self._hyper_params.steps_for_target_update == 0:
@@ -156,8 +161,9 @@ class DQL:
             episode_time = end_time - start_time
             episodes_time.append(episode_time)
 
-            # Keep track of episode costs
+            # Keep track of episode costs and losses
             episodes_costs.append(episode_costs)
+            episodes_losses.append(episode_losses)
 
             # Compute cost to go
             discounted_episode_costs = [
@@ -184,8 +190,9 @@ class DQL:
             print(f"\t Cost to go: {episode_cost_to_go}")
             print(f"\t Elapsed seconds: {episode_time}")
 
-        self.save_costs_and_avg_time(
+        self.save_data(
             np.array(episodes_costs),
+            np.array(episodes_losses),
             float(np.mean(episodes_time))
         )
 
@@ -289,11 +296,12 @@ class DQL:
         # Save new best weights
         self._q_network.save_weights(f"{self._model_folder}/weights_{episode}.h5")
 
-    def save_costs_and_avg_time(self, episodes_costs: npt.NDArray, avg_time: float) -> None:
+    def save_data(self, episodes_costs: npt.NDArray, episodes_losses: npt.NDArray, avg_time: float) -> None:
         with open(f"{self._model_folder}/avg_time.json", "w") as file:
             json.dump(avg_time, file)
 
         np.save(f"{self._model_folder}/costs.npy", episodes_costs)
+        np.save(f"{self._model_folder}/losses.npy", episodes_losses)
 
     @classmethod
     def load(cls, name: str, weights_name: str = None) -> Tuple[tf.keras.Model, PendulumEnv]:
