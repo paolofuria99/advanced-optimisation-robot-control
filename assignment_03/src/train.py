@@ -70,7 +70,7 @@ if __name__ == "__main__":
         "--max-steps", required=False, help="the maximum number of steps per episode", type=int, default=500
     )
     parser.add_argument(
-        "--sync-target", required=False, help="how often (steps) to sync target network", type=int, default=400
+        "--sync-target", required=False, help="how often (steps) to sync target network", type=int, default=1000
     )
     parser.add_argument("--eps-start", required=False, help="the starting value of epsilon", type=float, default=1.0)
     parser.add_argument(
