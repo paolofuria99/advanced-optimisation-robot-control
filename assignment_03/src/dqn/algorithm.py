@@ -304,6 +304,8 @@ class DQL:
         with open(f"{model_folder}/params.json", "r") as file:
             params = json.load(file)
 
+        params = params["env"]
+
         model = Network.get_model(params["input_size"], params["output_size"])
         weights = [item for item in os.listdir(model_folder) if item.startswith("weights_")][0]
         model.load_weights(f"{model_folder}/{weights}")

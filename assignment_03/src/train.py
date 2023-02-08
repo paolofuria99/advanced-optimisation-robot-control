@@ -62,12 +62,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--replay-size", required=False, help="the replay buffer size", type=int, default=10000)
     parser.add_argument(
-        "--replay-start", required=False, help="how many steps to start replay training", type=int, default=400
+        "--replay-start", required=False, help="how many steps to start replay training", type=int, default=1000
     )
     parser.add_argument("--discount", required=False, help="the discount factor", type=float, default=0.99)
     parser.add_argument("--max-episodes", required=False, help="the maximum number of episodes", type=int, default=100)
     parser.add_argument(
-        "--max-steps", required=False, help="the maximum number of steps per episode", type=int, default=200
+        "--max-steps", required=False, help="the maximum number of steps per episode", type=int, default=500
     )
     parser.add_argument(
         "--sync-target", required=False, help="how often (steps) to sync target network", type=int, default=400
