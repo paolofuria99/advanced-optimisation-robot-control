@@ -274,13 +274,14 @@ class DQL:
             "max_torque": self._env.max_torque
         }
 
-        # Save parameters
-        with open(f"{self._model_folder}/params.json", "w") as file:
-            json.dump(params, file)
+        to_save = {
+            "env": params,
+            "hyper": self._hyper_params._asdict()
+        }
 
-        # Save hyper parameters
-        with open(f"{self._model_folder}/hyper.json", "w") as file:
-            json.dump(self._hyper_params._asdict(), file)
+        # Save
+        with open(f"{self._model_folder}/params.json", "w") as file:
+            json.dump(to_save, file)
 
     def save_best_weights(self, episode: int) -> None:
         # Find previous best weights and delete them if present
