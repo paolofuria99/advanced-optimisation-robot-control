@@ -14,12 +14,11 @@ class SinglePendulumAgent(PendulumAgent):
     def __init__(
             self,
             max_vel: float,
-            max_torque: float,
-            sim_time_step: float
-    ):
+            max_torque: float
+    ) -> None:
 
         super(SinglePendulumAgent, self).__init__(
-            1, max_vel, max_torque, sim_time_step
+            1, max_vel, max_torque, 5e-2
         )
 
         # Set up the agent
@@ -32,22 +31,6 @@ class SinglePendulumAgent(PendulumAgent):
 
         # Setup friction
         self._friction_coefficient = .10
-
-    @property
-    def joint_angles_size(self):
-        return self._model.nq
-
-    @property
-    def joint_velocities_size(self):
-        return self._model.nv
-
-    @property
-    def state_size(self):
-        return self.joint_angles_size + self.joint_velocities_size
-
-    @property
-    def control_size(self):
-        return self.joint_velocities_size
 
     def _create_pendulum(self, num_joints: int):
         color = [1, 1, 0.78, 1.0]
@@ -99,23 +82,23 @@ class SinglePendulumAgent(PendulumAgent):
             state: npt.NDArray,
             control: npt.NDArray
     ) -> Tuple[npt.NDArray, float]:
-        q = NumpyUtils.modulo_pi(np.copy(state[:self.joint_angles_size]))
-        v = np.clip(np.copy(state[self.joint_angles_size:]), -self._max_vel, self._max_vel)
+        q = NumpyUtils.modulo_pi(np.copy(state[:self._num_joints]))
+        v = np.clip(np.copy(state[self._num_joints:]), -self._max_vel, self._max_vel)
         u = np.clip(np.copy(control), -self._max_torque, self._max_torque)
 
         pin.computeAllTerms(self._model, self._data, q, v)
         M = self._data.M
         b = self._data.nle
         a = inv(M) * (u - self._friction_coefficient * v - b)
-        a = a.reshape(self.joint_velocities_size)
+        a = a.reshape(self._num_joints)
 
         DT = self._sim_time_step
         q += (v + 0.5 * DT * a) * DT
         v += a * DT
 
-        new_state = np.empty(self.state_size)
-        new_state[:self.joint_angles_size] = NumpyUtils.modulo_pi(q)
-        new_state[self.joint_angles_size:] = np.clip(v, -self._max_vel, self._max_vel)
+        new_state = np.empty(self._num_joints * 2)
+        new_state[:self._num_joints] = NumpyUtils.modulo_pi(q)
+        new_state[self._num_joints:] = np.clip(v, -self._max_vel, self._max_vel)
 
         cost = self.cost_function(new_state, u)
 

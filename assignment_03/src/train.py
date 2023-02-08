@@ -17,7 +17,6 @@ def main(
         hyper_params: DQL.HyperParams,
         name: str,
         num_controls: int,
-        time_step: float,
         max_vel: float,
         max_torque: float,
         pend_type: PendulumType,
@@ -31,12 +30,12 @@ def main(
     if pend_type == pend_type.SINGLE:
         num_joints = 1
         env = SinglePendulumEnv(
-            num_controls, max_vel, max_torque, time_step, rng
+            num_controls, max_vel, max_torque, rng
         )
     elif pend_type == pend_type.DOUBLE:
         num_joints = 2
         env = UnderactDoublePendulumEnv(
-            num_controls, max_vel, max_torque, time_step, rng
+            num_controls, max_vel, max_torque, rng
         )
     else:
         print("Not supported.")
@@ -59,9 +58,6 @@ if __name__ == "__main__":
     parser.add_argument("name", help="the name of the experiment", type=str)
 
     parser.add_argument("--controls", required=False, help="how many controls to use", type=int, default=11)
-    parser.add_argument(
-        "--time-step", required=False, help="length of simulation time step (seconds)", type=float, default=0.05
-    )
     parser.add_argument("--max-vel", required=False, help="the maximum velocity", type=float, default=5.0)
     parser.add_argument("--max-torque", required=False, help="the maximum torque", type=float, default=5.0)
     parser.add_argument("--seed", required=False, help="the rng seed", type=int)
@@ -108,7 +104,6 @@ if __name__ == "__main__":
         hyper_params=hp,
         name=args.name,
         num_controls=args.controls,
-        time_step=args.time_step,
         max_vel=args.max_vel,
         max_torque=args.max_torque,
         pend_type=PendulumType(args.type),

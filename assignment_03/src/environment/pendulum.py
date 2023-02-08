@@ -123,26 +123,53 @@ class PendulumEnv(ABC):
         self._agent.display(self.current_state[:self._agent.num_joints])
         time.sleep(self._agent.sim_time_step)
 
-    def render_greedy_policy(self, q_network: tf.keras.Model) -> None:
+    def render_greedy_policy(
+            self,
+            q_network: tf.keras.Model,
+            random_start: bool = False,
+            max_steps: int = None,
+            num_episodes: int = 1,
+            display: bool = True
+    ) -> None:
         """
-        Render the greedy policy as derived by a Deep Q Network
+        Render the greedy policy as derived by a Deep Q Network.
 
         Args:
             q_network: the Deep Q Network agent to compute the Q function.
+            random_start: whether to start from a random state. If false, it starts from bottom.
+            max_steps: the maximum number of steps to take. If not given, it runs until goal is reached.
+            num_episodes: the number of episodes to run.
+            display: whether to render the model on the GUI.
         """
-        curr_state = self.reset([-np.pi, 0.0], display=True)
+        for episode in range(num_episodes):
 
-        while not self._is_goal(curr_state):
-            curr_state_t = tf.convert_to_tensor(curr_state)
-            curr_state_t = tf.expand_dims(curr_state_t, axis=0)
-            q_values = tf.squeeze(q_network(curr_state_t, training=False))
-            action = int(tf.argmin(q_values))
-            curr_state, _, _ = self.step(action, display=True)
+            if random_start:
+                start_state = self._random_state()
+            else:
+                start_state = self._bottom_state()
+
+            curr_state = self.reset(start_state, display=display)
+
+            steps = 1
+            while not self._is_goal(curr_state):
+                curr_state_t = tf.convert_to_tensor(curr_state)
+                curr_state_t = tf.expand_dims(curr_state_t, axis=0)
+                q_values = tf.squeeze(q_network(curr_state_t, training=False))
+                action = int(tf.argmin(q_values))
+                curr_state, _, _ = self.step(action, display=display)
+                if max_steps is not None and steps >= max_steps:
+                    break
+                steps += 1
 
     def _random_state(self) -> npt.NDArray:
         position = self._rng.uniform(-np.pi, np.pi, self._agent.num_joints)
         velocity = self._rng.uniform(-self._agent.max_vel, self._agent.max_vel, self._agent.num_joints)
         return np.concatenate((position, velocity))
+
+    @staticmethod
+    @abstractmethod
+    def _bottom_state() -> npt.NDArray:
+        pass
 
     @staticmethod
     def _is_goal(state: npt.NDArray) -> bool:

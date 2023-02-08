@@ -268,7 +268,6 @@ class DQL:
         params = {
             "input_size": model.input_shape[1],
             "output_size": model.output_shape[1],
-            "time_step": self._env.agent.sim_time_step,
             "max_vel": self._env.agent.max_vel,
             "max_torque": self._env.agent.max_torque
         }
@@ -313,11 +312,11 @@ class DQL:
         single = params["input_size"] == 2
         if single:
             env = SinglePendulumEnv(
-                params["output_size"], params["max_vel"], params["max_torque"], params["time_step"],
+                params["output_size"], params["max_vel"], params["max_torque"]
             )
         else:
             env = UnderactDoublePendulumEnv(
-                params["output_size"], params["max_vel"], params["max_torque"], params["time_step"]
+                params["output_size"], params["max_vel"], params["max_torque"]
             )
 
         return model, env

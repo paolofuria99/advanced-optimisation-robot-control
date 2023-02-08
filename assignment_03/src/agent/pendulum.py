@@ -12,12 +12,12 @@ class PendulumAgent(ABC):
             num_joints: int,
             max_vel: float,
             max_torque: float,
-            sim_time_step: float
+            time_step: float
     ) -> None:
         self._num_joints = num_joints
         self._max_vel = max_vel
         self._max_torque = max_torque
-        self._sim_time_step = sim_time_step
+        self._sim_time_step = time_step
 
     @property
     def num_joints(self):

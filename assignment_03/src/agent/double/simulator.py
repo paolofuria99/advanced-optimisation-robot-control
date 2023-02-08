@@ -8,12 +8,12 @@ import pinocchio as se3
 
 class RobotSimulator:
 
-    def __init__(self, display_time, robot):
+    def __init__(self, time_step, robot):
         self.robot = robot
 
         self.frame_axes = []  # list of frames whose axes must be displayed in viewer
 
-        self.DISPLAY_T = display_time  # refresh period for viewer
+        self.DISPLAY_T = time_step  # refresh period for viewer
 
         # for gepetto viewer
         try:
