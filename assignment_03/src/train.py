@@ -2,9 +2,10 @@ import argparse
 from enum import Enum
 
 import numpy.random as random
-import orc.assignment_03.src.environment.pendulum as environment
-from orc.assignment_03.src.dqn.algorithm import DQL
-from orc.assignment_03.src.dqn.network import Network
+from dqn.algorithm import DQL
+from dqn.network import Network
+from environment.double_pendulum import UnderactDoublePendulumEnv
+from environment.single_pendulum import SinglePendulumEnv
 
 
 class PendulumType(Enum):
@@ -29,11 +30,16 @@ def main(
 
     if pend_type == pend_type.SINGLE:
         num_joints = 1
-        env = environment.SinglePendulum(
-            time_step=time_step, num_controls=num_controls, max_vel=max_vel, max_torque=max_torque, rng=rng
+        env = SinglePendulumEnv(
+            num_controls, max_vel, max_torque, time_step, rng
+        )
+    elif pend_type == pend_type.DOUBLE:
+        num_joints = 2
+        env = UnderactDoublePendulumEnv(
+            num_controls, max_vel, max_torque, time_step, rng
         )
     else:
-        print("Not supported")
+        print("Not supported.")
         return
 
     model = Network.get_model(num_joints * 2, num_controls)

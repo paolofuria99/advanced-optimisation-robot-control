@@ -8,10 +8,12 @@ from typing import NamedTuple, Tuple
 
 import numpy as np
 import numpy.typing as npt
-import orc.assignment_03.src.environment.pendulum as environment
 import tensorflow as tf
-from orc.assignment_03.src.dqn.experience import Experience, ExperienceBuffer
-from orc.assignment_03.src.dqn.network import Network
+from dqn.experience import ExperienceBuffer, Experience
+from dqn.network import Network
+from environment.double_pendulum import UnderactDoublePendulumEnv
+from environment.pendulum import PendulumEnv
+from environment.single_pendulum import SinglePendulumEnv
 from tensorflow.python.ops.numpy_ops import np_config
 
 
@@ -41,7 +43,7 @@ class DQL:
             name: str,
             network_model: tf.keras.Model,
             hyper_params: HyperParams,
-            env: environment.Pendulum,
+            env: PendulumEnv,
             rng: np.random.Generator = np.random.default_rng()
     ) -> None:
         self._name = name
@@ -76,12 +78,9 @@ class DQL:
         Train the Q-network.
 
         Returns:
-            The Q-network from the last episode. The best model is saved separately..
+            The Q-network from the last episode. The best agent is saved separately..
         """
         np_config.enable_numpy_behavior()
-
-        # Keep track of best model to return
-        best_model = tf.keras.models.clone_model(self._q_network)
 
         # Set epsilon to its starting value, which will be decayed
         epsilon = self._hyper_params.epsilon_start
@@ -169,7 +168,7 @@ class DQL:
             # Inserting the cost to go
             cost_to_go_all.append(episode_cost_to_go)
 
-            # Save best model if the mean over the last episodes improved
+            # Save best agent if the mean over the last episodes improved
             if episode >= mean_every:
                 mean = np.mean(cost_to_go_all[episode - mean_every:episode])
                 if mean < cost_to_go_best_mean:
@@ -269,9 +268,9 @@ class DQL:
         params = {
             "input_size": model.input_shape[1],
             "output_size": model.output_shape[1],
-            "time_step": self._env.time_step,
-            "max_vel": self._env.max_vel,
-            "max_torque": self._env.max_torque
+            "time_step": self._env.agent.sim_time_step,
+            "max_vel": self._env.agent.max_vel,
+            "max_torque": self._env.agent.max_torque
         }
 
         to_save = {
@@ -298,7 +297,7 @@ class DQL:
         np.save(f"{self._model_folder}/costs.npy", episodes_costs)
 
     @classmethod
-    def load(cls, name: str) -> Tuple[tf.keras.Model, environment.Pendulum]:
+    def load(cls, name: str, weights_name: str = None) -> Tuple[tf.keras.Model, PendulumEnv]:
 
         model_folder = f"{cls.save_folder}/{name}"
         with open(f"{model_folder}/params.json", "r") as file:
@@ -307,17 +306,18 @@ class DQL:
         params = params["env"]
 
         model = Network.get_model(params["input_size"], params["output_size"])
-        weights = [item for item in os.listdir(model_folder) if item.startswith("weights_")][0]
-        model.load_weights(f"{model_folder}/{weights}")
+        if weights_name is None:
+            weights_name = [item for item in os.listdir(model_folder) if item.startswith("weights_")][0]
+        model.load_weights(f"{model_folder}/{weights_name}")
 
         single = params["input_size"] == 2
         if single:
-            env = environment.SinglePendulum(
-                params["time_step"], params["output_size"], params["max_vel"], params["max_torque"]
+            env = SinglePendulumEnv(
+                params["output_size"], params["max_vel"], params["max_torque"], params["time_step"],
             )
         else:
-            env = environment.DoublePendulumUnderact(
-                params["time_step"], params["output_size"], params["max_vel"], params["max_torque"]
+            env = UnderactDoublePendulumEnv(
+                params["output_size"], params["max_vel"], params["max_torque"], params["time_step"]
             )
 
         return model, env

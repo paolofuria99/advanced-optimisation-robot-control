@@ -3,21 +3,21 @@ import tensorflow as tf
 
 class Network:
     """
-    This is a static utility class used to get the network model to be used
+    This is a static utility class used to get the network agent to be used
     in the Deep Q Learning algorithm.
     """
 
     @staticmethod
     def get_model(input_size: int, output_size: int) -> tf.keras.Model:
         """
-        Get the neural network model to use for Deep Q Learning.
+        Get the neural network agent to use for Deep Q Learning.
 
         Args:
             input_size: the number of neurons in the input layer
             output_size: the number of neurons in the output layer
 
         Returns:
-            A neural network model.
+            A neural network agent.
         """
         inputs = tf.keras.layers.Input(input_size)
         state_out1 = tf.keras.layers.Dense(24, activation="relu", kernel_initializer="variance_scaling")(inputs)

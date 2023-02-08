@@ -12,7 +12,7 @@ def main(name: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("model_name", help="the name of the model to evaluate", type=str)
+    parser.add_argument("model_name", help="the name of the agent to evaluate", type=str)
 
     args = parser.parse_args()
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     ]
 
     if args.model_name not in possible_names:
-        print("No model with that name.")
+        print("No agent with that name.")
         exit(1)
 
     main(args.model_name)
