@@ -65,7 +65,7 @@ if __name__ == "__main__":
         "--replay-start", required=False, help="how many steps to start replay training", type=int, default=400
     )
     parser.add_argument("--discount", required=False, help="the discount factor", type=float, default=0.99)
-    parser.add_argument("--max-episodes", required=False, help="the maximum number of episodes", type=int, default=200)
+    parser.add_argument("--max-episodes", required=False, help="the maximum number of episodes", type=int, default=100)
     parser.add_argument(
         "--max-steps", required=False, help="the maximum number of steps per episode", type=int, default=200
     )
