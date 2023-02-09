@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import json
 import os
 import time
@@ -85,18 +86,20 @@ class DQL:
         # Set epsilon to its starting value, which will be decayed
         epsilon = self._hyper_params.epsilon_start
 
-        # Keep track of the total number of steps (regardless of the episode)
+        # Keep track of useful data
         total_steps = 0
-
-        # Keep track of average episode time and costs of each episode
         episodes_time = []
         episodes_costs = []
         episodes_losses = []
 
-        # cost_to_go mean every tot
-        cost_to_go_all = []
-        mean_every = 5
-        cost_to_go_best_mean = np.inf
+        # To decide if to save a model, we compute the average cost to go over a number
+        # of last episodes. We save the model when the cost to go improves
+        avg_cost_to_go_window = 5
+        last_costs_to_go = collections.deque(maxlen=avg_cost_to_go_window)
+        best_avg_cost_to_go = np.inf
+
+        # Optimizer for the training
+        optimizer = tf.keras.optimizers.Adam(self._hyper_params.learning_rate)
 
         # Run training for a maximum number of episodes
         for episode in range(1, self._hyper_params.max_episodes + 1):
@@ -140,10 +143,9 @@ class DQL:
                 )
 
                 # Perform a training step if enough steps have been performed
+                loss = 0.0
                 if total_steps >= self._hyper_params.replay_start:
-                    loss = self.training_step()
-                else:
-                    loss = 0.0
+                    loss = self.training_step(optimizer)
                 episode_losses.append(loss)
 
                 # Copy weights to target network every certain number of steps
@@ -170,15 +172,13 @@ class DQL:
                 cost * (self._hyper_params.discount**idx) for idx, cost in enumerate(episode_costs)
             ]
             episode_cost_to_go = float(np.sum(discounted_episode_costs))
-
-            # Inserting the cost to go
-            cost_to_go_all.append(episode_cost_to_go)
+            last_costs_to_go.append(episode_cost_to_go)
 
             # Save best agent if the mean over the last episodes improved
-            if episode >= mean_every:
-                mean = np.mean(cost_to_go_all[episode - mean_every:episode])
-                if mean < cost_to_go_best_mean:
-                    cost_to_go_best_mean = mean
+            if episode >= avg_cost_to_go_window:
+                mean = np.mean(last_costs_to_go)
+                if mean < best_avg_cost_to_go:
+                    best_avg_cost_to_go = mean
                     self.save_best_weights(episode)
 
             # Print some info
@@ -188,7 +188,19 @@ class DQL:
                 print("\t Did not reach goal...")
             print(f"\t Epsilon: {epsilon}")
             print(f"\t Cost to go: {episode_cost_to_go}")
+            print(f"\t Loss: {float(np.mean(episode_losses))}")
             print(f"\t Elapsed seconds: {episode_time}")
+
+            # Also save the weights every number of episodes
+            if episode % 25 == 0:
+                self._q_network.save_weights(f"{self._model_folder}/backup_weights_{episode}.h5")
+
+            # Save data
+            self.save_data(
+                np.array(episodes_costs),
+                np.array(episodes_losses),
+                float(np.mean(episodes_time))
+            )
 
         self.save_data(
             np.array(episodes_costs),
@@ -219,7 +231,7 @@ class DQL:
             action = int(np.argmin(q_values))
         return action
 
-    def training_step(self) -> float:
+    def training_step(self, optimizer: tf.keras.optimizers.Optimizer) -> float:
         """
         Performs a training step over a batch of experiences.
 
@@ -227,7 +239,6 @@ class DQL:
             The mean loss value (of the batch).
         """
         loss_function = tf.keras.losses.MeanSquaredError()
-        optimizer = tf.keras.optimizers.Adam(self._hyper_params.learning_rate)
 
         with tf.GradientTape() as tape:
             # Sample experiences and convert them into tensors

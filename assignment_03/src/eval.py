@@ -6,11 +6,12 @@ from dqn.algorithm import DQL
 
 def main(
         name: str,
+        weights: str,
         random_start: bool,
         num_episodes: int,
         max_steps: int
 ) -> None:
-    network, env = DQL.load(name)
+    network, env = DQL.load(name, weights_name=weights)
     env.render_greedy_policy(
         network,
         random_start=random_start,
@@ -24,6 +25,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("model_name", help="the name of the agent to evaluate", type=str)
+    parser.add_argument("--weights", required=False, help="the name of the weights to load", type=str)
     parser.add_argument("--max-steps", required=False, help="max number of steps per episode", type=int)
     parser.add_argument("--num-episodes", required=False, help="max number of episodes", default=1, type=int)
     parser.add_argument(
@@ -44,6 +46,7 @@ if __name__ == "__main__":
 
     main(
         args.model_name,
+        args.weights,
         args.r,
         args.num_episodes,
         args.max_steps
