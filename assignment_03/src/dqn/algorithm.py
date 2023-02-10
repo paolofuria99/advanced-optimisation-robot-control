@@ -305,7 +305,7 @@ class DQL:
         if len(weights) != 0:
             os.remove(f"{self._model_folder}/{weights[0]}")
         # Save new best weights
-        self._q_network.save_weights(f"{self._model_folder}/weights_{episode}.h5")
+        self._q_network.save_weights(f"{self._model_folder}/best_weights_{episode}.h5")
 
     def save_data(self, episodes_costs: npt.NDArray, episodes_losses: npt.NDArray, avg_time: float) -> None:
         with open(f"{self._model_folder}/avg_time.json", "w") as file:
@@ -323,19 +323,24 @@ class DQL:
 
         params = params["env"]
 
-        model = Network.get_model(params["input_size"], params["output_size"])
-        if weights_name is None:
-            weights_name = [item for item in os.listdir(model_folder) if item.startswith("weights_")][0]
-        model.load_weights(f"{model_folder}/{weights_name}")
-
         single = params["input_size"] == 2
         if single:
             env = SinglePendulumEnv(
                 params["output_size"], params["max_vel"], params["max_torque"]
             )
+            model = Network.get_single_model(params["input_size"], params["output_size"])
         else:
             env = UnderactDoublePendulumEnv(
                 params["output_size"], params["max_vel"], params["max_torque"]
             )
+            model = Network.get_double_model(params["input_size"], params["output_size"])
+
+        if weights_name is None:
+            names = [item for item in os.listdir(model_folder) if item.startswith("best_weights")]
+            if len(names) == 0:
+                print("ERROR: No weights specified, and no file named 'best_weights.h5' found in the model folder")
+                exit(1)
+            weights_name = names[0]
+        model.load_weights(f"{model_folder}/{weights_name}")
 
         return model, env
