@@ -63,6 +63,15 @@ class Display:
 
         # Finally, refresh the layout to obtain your first rendering.
         self.viewer.gui.refresh()
+        self.viewer.gui.setCameraTransform(
+            windowName, [0.027320027351379395,
+                         -5.775243759155273,
+                         0.08012843132019043,
+                         0.7071067690849304,
+                         0.0,
+                         0.0,
+                         0.7071067690849304]
+        )
 
     def place(self, objName, M, refresh=True):
         """
