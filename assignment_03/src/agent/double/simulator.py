@@ -31,6 +31,16 @@ class RobotSimulator:
         self.robot.displayCollisions(False)
         self.robot.displayVisuals(True)
 
+        self.gui.setCameraTransform(
+            "python-pinocchio", [1.4622807502746582,
+                                 -0.1106378510594368,
+                                 0.15224549174308777,
+                                 0.49773091077804565,
+                                 0.46019819378852844,
+                                 0.49909576773643494,
+                                 0.5398008823394775]
+        )
+
     def display(self, q):
         for frame in self.frame_axes:
             frame_id = self.robot.model.getFrameId(frame)
