@@ -24,7 +24,7 @@ def main(
         random_start=random_start,
         max_steps=max_steps,
         num_episodes=num_episodes,
-        display=False
+        display=True
     )
 
     print("Done.")

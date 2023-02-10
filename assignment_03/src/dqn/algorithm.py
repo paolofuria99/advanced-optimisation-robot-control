@@ -338,7 +338,7 @@ class DQL:
         if weights_name is None:
             names = [item for item in os.listdir(model_folder) if item.startswith("best_weights")]
             if len(names) == 0:
-                print("ERROR: No weights specified, and no file named 'best_weights.h5' found in the model folder")
+                print("ERROR: No weights specified, and no file starting with 'best_weights' found in the model folder")
                 exit(1)
             weights_name = names[0]
         model.load_weights(f"{model_folder}/{weights_name}")
