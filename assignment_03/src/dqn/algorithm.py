@@ -301,7 +301,7 @@ class DQL:
 
     def save_best_weights(self, episode: int) -> None:
         # Find previous best weights and delete them if present
-        weights = [item for item in os.listdir(self._model_folder) if item.startswith("weights_")]
+        weights = [item for item in os.listdir(self._model_folder) if item.startswith("best_weights")]
         if len(weights) != 0:
             os.remove(f"{self._model_folder}/{weights[0]}")
         # Save new best weights
