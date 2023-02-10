@@ -55,3 +55,13 @@ class UnderactDoublePendulumAgent(PendulumAgent):
         cost = self.cost_function(new_state, u)
 
         return new_state, cost
+
+    def cost_function(self, state: npt.NDArray, torque: npt.NDArray) -> float:
+        angle = state[:self._num_joints]
+        velocity = state[self._num_joints:]
+
+        return \
+            + NumpyUtils.sum_square(angle[0] + angle[1]) \
+            + 0.85 * NumpyUtils.sum_square(angle[0]) \
+            + 1e-1 * NumpyUtils.sum_square(angle[1]) \
+            + 1e-2 * NumpyUtils.sum_square(velocity[0])

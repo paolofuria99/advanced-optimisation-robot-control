@@ -57,8 +57,12 @@ class PendulumEnv(ABC):
     def current_state(self):
         return self._current_state
 
+    @property
+    def torque_discretization_resolution(self):
+        return self._dis_res_torque
+
     @abstractmethod
-    def _d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
         """
         Convert a discretized torque into a continuous vector.
 
@@ -103,7 +107,7 @@ class PendulumEnv(ABC):
         Returns:
             The new state, the cost of the step, and whether the goal was reached.
         """
-        continuous_torque = self._d2c_torque(torque_idx)
+        continuous_torque = self.d2c_torque(torque_idx)
 
         curr_state = self._current_state
         new_state, cost = self._agent.dynamics(curr_state, continuous_torque)
@@ -130,7 +134,7 @@ class PendulumEnv(ABC):
             max_steps: int = None,
             num_episodes: int = 1,
             display: bool = True
-    ) -> None:
+    ) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """
         Render the greedy policy as derived by a Deep Q Network.
 
@@ -140,8 +144,19 @@ class PendulumEnv(ABC):
             max_steps: the maximum number of steps to take. If not given, it runs until goal is reached.
             num_episodes: the number of episodes to run.
             display: whether to render the model on the GUI.
+
+        Returns:
+            An array of all explored states, an array of all applied torques, an array of all costs
         """
+        episodes_costs = []
+        episodes_states = []
+        episodes_torques = []
+
         for episode in range(num_episodes):
+
+            episode_costs = []
+            episode_states = []
+            episode_torques = []
 
             if random_start:
                 start_state = self._random_state()
@@ -150,16 +165,35 @@ class PendulumEnv(ABC):
 
             curr_state = self.reset(start_state, display=display)
 
+            episode_states.append(curr_state)
+
             steps = 1
             while not self._is_goal(curr_state):
+                # Compute Q values and find the optimal action
                 curr_state_t = tf.convert_to_tensor(curr_state)
                 curr_state_t = tf.expand_dims(curr_state_t, axis=0)
                 q_values = tf.squeeze(q_network(curr_state_t, training=False))
                 action = int(tf.argmin(q_values))
-                curr_state, _, _ = self.step(action, display=display)
+
+                # Perform the action
+                curr_state, cost, _ = self.step(action, display=display)
+
+                episode_states.append(curr_state)
+                episode_costs.append(cost)
+                episode_torques.append(self.d2c_torque(action))
+
                 if max_steps is not None and steps >= max_steps:
                     break
                 steps += 1
+
+            episodes_states.append(episode_states)
+            episodes_costs.append(episode_costs)
+            episodes_torques.append(episode_torques)
+
+        return \
+            np.array(episodes_states), \
+            np.array(episodes_torques), \
+            np.array(episodes_costs)
 
     def _random_state(self) -> npt.NDArray:
         position = self._rng.uniform(-np.pi, np.pi, self._agent.num_joints)
@@ -174,3 +208,16 @@ class PendulumEnv(ABC):
     @staticmethod
     def _is_goal(state: npt.NDArray) -> bool:
         return (state == 0.0).all()
+
+    def c2d_torque(self, torque: float) -> int:
+        """
+        Convert a continuous torque for the first joint into its discrete counterpart.
+
+        Args:
+            torque: the continuous torque for the first joint
+
+        Returns:
+            The discrete torque: an integer between 0 and control_size-1.
+        """
+        torque = np.clip(torque, -self.agent.max_torque + 1e-3, self.agent.max_torque - 1e-3)
+        return int(np.floor((torque + self.agent.max_torque) / self._dis_res_torque))

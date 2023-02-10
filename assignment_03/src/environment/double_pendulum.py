@@ -25,7 +25,7 @@ class UnderactDoublePendulumEnv(PendulumEnv):
         agent = UnderactDoublePendulumAgent(max_vel, max_torque)
         super(UnderactDoublePendulumEnv, self).__init__(agent, num_controls, rng)
 
-    def _d2c_torque(self, torque_idx: int) -> npt.NDArray:
+    def d2c_torque(self, torque_idx: int) -> npt.NDArray:
         """
         Convert a discretized torque into a continuous vector.
         The torque for the second joint is set to 0 for underactuation.

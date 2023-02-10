@@ -25,7 +25,7 @@ class SinglePendulumEnv(PendulumEnv):
         agent = SinglePendulumAgent(max_vel, max_torque)
         super(SinglePendulumEnv, self).__init__(agent, num_controls, rng)
 
-    def _d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
+    def d2c_torque(self, torque_idx: int) -> np.typing.NDArray:
         """
         Convert a discretized torque into a continuous vector.
 
