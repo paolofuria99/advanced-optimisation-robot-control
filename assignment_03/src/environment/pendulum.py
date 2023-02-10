@@ -219,5 +219,5 @@ class PendulumEnv(ABC):
         Returns:
             The discrete torque: an integer between 0 and control_size-1.
         """
-        torque = np.clip(torque, -self.agent.max_torque + 1e-3, self.agent.max_torque - 1e-3)
+        torque = np.clip(torque, -self.agent.max_torque, self.agent.max_torque)
         return int(np.floor((torque + self.agent.max_torque) / self._dis_res_torque))
