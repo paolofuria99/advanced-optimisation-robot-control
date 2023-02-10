@@ -29,19 +29,19 @@ def main(
 
     if pend_type == pend_type.SINGLE:
         num_joints = 1
+        model = Network.get_single_model(num_joints * 2, num_controls)
         env = SinglePendulumEnv(
             num_controls, max_vel, max_torque, rng
         )
     elif pend_type == pend_type.DOUBLE:
         num_joints = 2
+        model = Network.get_double_model(num_joints * 2, num_controls)
         env = UnderactDoublePendulumEnv(
             num_controls, max_vel, max_torque, rng
         )
     else:
         print("Not supported.")
         return
-
-    model = Network.get_model(num_joints * 2, num_controls)
 
     dql = DQL(name, model, hyper_params, env, rng)
 
