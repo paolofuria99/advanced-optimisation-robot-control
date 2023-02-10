@@ -62,9 +62,9 @@ class DQL:
         # Folder for saving and logging purposes
         self._model_folder = f"{self.save_folder}/{name}"
         if os.path.exists(self._model_folder):
-            # Create a sub-folder to avoid deleting precious files by mistake
+            # Add a timestamp to avoid colliding with the existing folder
             curr_time = datetime.now().strftime("%H%M%S")
-            self._model_folder += f"/{curr_time}"
+            self._model_folder += f"_{curr_time}"
         os.mkdir(self._model_folder)
 
         # Log parameters
