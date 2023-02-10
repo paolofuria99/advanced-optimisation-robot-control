@@ -26,6 +26,9 @@ class Plot:
         self._colors = ["b", "r"]
         self._time_vec = np.arange(self.states.shape[0]) * self.env.agent.sim_time_step
         self._num_discrete = 60
+        # If double pendulum, express the second joint angle in absolute and not relative to the first joint
+        if self.env.agent.num_joints == 2:
+            self.states[:, 1] += self.states[:, 0]
         # Keep only the torque of the first joint
         if self.env.agent.num_joints > 1:
             self.torques = np.array([torque[0] for torque in self.torques])
