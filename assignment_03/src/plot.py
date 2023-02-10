@@ -141,8 +141,8 @@ class Plot:
         Returns:
             The value table and the policy table.
         """
-        value_table = np.zeros(self._num_discrete**2)
-        policy_table = np.zeros(self._num_discrete**2, np.int)
+        value_table = np.zeros(self._num_discrete**2, np.float)
+        policy_table = np.zeros(self._num_discrete**2, np.float)
 
         states_idx = []  # Indexes of all possible discrete states
         states = []  # Continuous states computed from discrete states
