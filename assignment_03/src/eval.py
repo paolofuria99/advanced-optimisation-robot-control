@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("model_name", help="the name of the agent to evaluate", type=str)
     parser.add_argument("--weights", required=False, help="the name of the weights to load", type=str)
     parser.add_argument("--num-episodes", required=False, help="max number of episodes", default=1, type=int)
-    parser.add_argument("--duration", required=False, help="duration of episode (in seconds)", default=5.0, type=float)
+    parser.add_argument("--duration", required=False, help="duration of episode (in seconds)", default=7.0, type=float)
     parser.add_argument(
         "-r", required=False, help="if you want to start from a random position", default=False, action="store_true"
     )
