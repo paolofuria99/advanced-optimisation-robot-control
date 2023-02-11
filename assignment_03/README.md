@@ -39,7 +39,8 @@ src/                            [folder containing all source code]
 README.md                       
 ```
 ## Usage
-There are two main entrypoints: `training.py` for training a model, and `eval.py` for evaluating a trained model. In order to run them, you need to move into the `src` folder.
+There are two main entrypoints: `training.py` for training a model, and `eval.py` for evaluating a trained model. 
+> **_IMPORTANT_**: In order to run them, you need to `cd` into the `src` folder.
 
 ### Training
 To start training a model with default parameters, for the single or double pendulum respectively, run:
