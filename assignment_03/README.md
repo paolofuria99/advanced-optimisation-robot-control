@@ -103,4 +103,12 @@ python3 eval.py double_best
 ## Results of our experiments
 Plots, images and videos of the best models we found for both pendulums can be found in the `results` folder. For more details, refer to our report.
 
+Below you can find videos of the simulations of both pendulums, both starting from the bottom and starting from 10 different random states.
 
+https://user-images.githubusercontent.com/50495055/218241298-587604c8-bb9b-46f1-99c5-123df4337460.mp4
+
+https://user-images.githubusercontent.com/50495055/218241319-ccea4300-86fc-45fa-88d4-4f2e30e7f398.mp4
+
+https://user-images.githubusercontent.com/50495055/218241340-4ed5603c-2462-4042-b4ba-52fe65a9e558.mp4
+
+https://user-images.githubusercontent.com/50495055/218241368-29fe2117-a27d-4ea8-a54a-0fbc74101e7d.mp4
