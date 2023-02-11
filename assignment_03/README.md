@@ -105,7 +105,7 @@ Plots, images and videos of the best models we found for both pendulums can be f
 
 Below you can find videos of the simulations of both pendulums, both starting from the bottom and starting from 10 different random states.
 
-https://user-images.githubusercontent.com/50495055/218241298-587604c8-bb9b-46f1-99c5-123df4337460.mp4
+https://user-images.githubusercontent.com/50495055/218241421-8e4dfed6-9d50-4611-b04f-167a9ef50bbb.mp4
 
 https://user-images.githubusercontent.com/50495055/218241319-ccea4300-86fc-45fa-88d4-4f2e30e7f398.mp4
 
