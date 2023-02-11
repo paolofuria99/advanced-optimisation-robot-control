@@ -76,7 +76,7 @@ To evaluate a trained model, run:
 ```
 python3 eval.py name_of_the_experiment
 ```
-where `name_of_the_experiment` is the name you have chosen for training. Since the evaluation automatically loads the right environment and model architecture for either the single or double pendulum, you need to have this folder structure:
+where `name_of_the_experiment` is the name you have chosen for training. Since the evaluation automatically loads the right environment and model architecture for either the single or double pendulum, you need to have this folder structure (which is automatically generated when training a model):
 ```
 models/
 ├─ name_of_experiment/    [the experiment you want to evaluate]
