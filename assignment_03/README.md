@@ -37,7 +37,7 @@ src/                            [folder containing all source code]
 ├─ plot.py                      [code implementing plotting functions]
 ├─ train.py                     [main entry-point for training a model]
 README.md                       [this readme]
-report.pdf                      [detailed report of the project]-
+report.pdf                      [detailed report of the project]
 ```
 ## Usage
 There are two main entrypoints: `training.py` for training a model, and `eval.py` for evaluating a trained model. 
