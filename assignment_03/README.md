@@ -48,7 +48,7 @@ To start training a model with default parameters, for the single or double pend
 ```
 python3 train.py [single|double] name_of_experiment
 ```
-Optionally, you can specify the following parameters:
+where _name_of_experiment_ is a name that identifies your experiment. Optionally, you can specify the following parameters:
 
 
 | Name and value                | Description                                                 | Default  |
